@@ -16,10 +16,11 @@ import { SettlementCountdown } from "@/components/marketplace/SettlementCountdow
 import { Download, ExternalLink } from "lucide-react";
 import { PortfolioRiskIndicator } from "@/components/invoices/InvoiceRiskAlert";
 import { ListPositionButton } from "@/components/dashboard/ListPositionButton";
+import { UnderwritingPositionsTab } from "@/components/underwriting/UnderwritingPositionsTab";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
-type Tab = "holdings" | "returns" | "payouts";
+type Tab = "holdings" | "returns" | "payouts" | "underwriting";
 
 // ─── Tab button ────────────────────────────────────────────────────────────
 
@@ -475,6 +476,12 @@ export function InvestorPortfolioPage() {
           onClick={() => setActiveTab("payouts")}
           testId="tab-payout-history"
         />
+        <TabButton
+          label="Underwriting"
+          active={activeTab === "underwriting"}
+          onClick={() => setActiveTab("underwriting")}
+          testId="tab-underwriting"
+        />
       </div>
 
       {/* Tab content — mounts all tabs to keep React Query cache warm */}
@@ -487,6 +494,8 @@ export function InvestorPortfolioPage() {
       <div className={activeTab === "payouts" ? "" : "hidden"}>
         <PayoutHistoryTab />
       </div>
+      {/* Underwriting positions (#587) load only when the tab is opened. */}
+      {activeTab === "underwriting" && <UnderwritingPositionsTab />}
     </div>
   );
 }

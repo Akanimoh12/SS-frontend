@@ -9,6 +9,7 @@ import { RolloverSettingsPanel } from "@/components/investor/RolloverSettingsPan
 // #443 — Stellar network selector.
 // #476 — auto-invest rule configuration panel.
 // #545 — invoice auto-rollover configuration panel.
+// #591 — link to delegated payout operators.
 export default function SettingsPage() {
   return (
     <main className="container mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -30,6 +31,15 @@ export default function SettingsPage() {
           className="inline-block text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           Alert preferences →
+        </Link>
+      </section>
+      <section id="operators" className="space-y-3">
+        <h2 className="text-lg font-semibold">Operators</h2>
+        <Link
+          href="/settings/operators"
+          className="inline-block text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Manage payout operators →
         </Link>
       </section>
       <RestartTourSettings />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { GuardedButton } from "@/components/network/GuardedButton";
 import { InvestmentAmountInput } from "@/components/invoices/InvestmentAmountInput";
 import { InvestCurrencySelector } from "@/components/invoices/InvestCurrencySelector";
 import { FeeTierDisplay } from "@/components/invoices/FeeTierDisplay";
@@ -199,7 +200,7 @@ export function InvestmentModal({
               >
                 Cancel
               </Button>
-              <Button
+              <GuardedButton
                 onClick={handleInvest}
                 disabled={
                   validAmount === null ||
@@ -212,7 +213,7 @@ export function InvestmentModal({
                 className="flex-1"
               >
                 {investMutation.isPending ? "Investing..." : "Invest"}
-              </Button>
+              </GuardedButton>
             </div>
           </div>
         )}

@@ -23,6 +23,8 @@ import { useSuitabilityTier } from "@/hooks/useSuitabilityTier";
 import { REQUIRED_TIER, TIER_LABELS, canInvestInGrade } from "@/lib/suitability";
 import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStatus";
 import { IssuerCreditTierBadge } from "@/components/issuers/IssuerCreditTierBadge";
+import { OverdueChip } from "@/components/invoices/OverdueChip";
+import { IssuerTierBadge } from "@/components/issuers/IssuerTierBadge";
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   open: "default",
@@ -68,13 +70,14 @@ export function InvoiceCard({
             <CardTitle className="line-clamp-1 text-base">
               {invoice.title}
             </CardTitle>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground"><span>Issuer {invoice.seller.slice(0, 6)}…{invoice.seller.slice(-4)}</span><IssuerCreditTierBadge wallet={invoice.seller} /></div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground"><span>Issuer {invoice.seller.slice(0, 6)}…{invoice.seller.slice(-4)}</span><IssuerTierBadge address={invoice.seller} tier={invoice.issuer_tier} /><IssuerCreditTierBadge wallet={invoice.seller} /></div>
             {stateChange && <StateChangeBadge change={stateChange} />}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Badge variant={statusVariant[invoice.status]}>
               {invoice.status}
             </Badge>
+            <OverdueChip status={invoice.status} dueDate={invoice.due_date} />
             {showWatchToggle && <WatchlistButton invoiceId={invoice.id} />}
           </div>
         </div>

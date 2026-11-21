@@ -61,6 +61,8 @@ import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStat
 import { ImpactReport } from "@/components/invoices/ImpactReport";
 import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
 import { RateAuctionPanel } from "@/components/invoices/RateAuctionPanel";
+import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
+import { RestructureProposalCard } from "@/components/invoices/RestructureProposalCard";
 
 function InvoiceDetailSkeleton() {
   return (
@@ -217,6 +219,8 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
   });
   const { data: protocolStatus } = useProtocolStatus();
   const { address } = useWallet();
+  // One late-interest lookup for the detail view (#607); list rows stay pure.
+  const lateInterest = useLateInterest(invoice?.id, invoice?.late_penalty_accrued);
 
   // The floor is a per-invoice setting from invoice API (#436), falling back to protocol-wide setting.
   const minInvestment = invoice?.min_investment ?? protocolStatus?.min_investment ?? DEFAULT_MIN_INVESTMENT;
@@ -235,6 +239,11 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
   const isQualifyingInvestor = Boolean(
     address && invoice.investors.some((inv) => inv.address === address)
   );
+  const investorClaim = address
+    ? invoice.investors
+        .filter((inv) => inv.address === address)
+        .reduce((sum, inv) => sum + inv.amount, 0)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -320,6 +329,14 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
       <InvoiceRiskAlert invoiceId={invoice.id} />
       <InvoiceUnderReviewBanner invoiceId={invoice.id} />
       <InvoiceGreylistStatus greylist={invoice.greylist} />
+      <OverdueBanner invoice={invoice} interest={lateInterest} />
+      <AssignmentBanner
+        invoiceId={invoice.id}
+        issuerAddress={invoice.seller}
+        walletAddress={address}
+        isDisputed={invoice.is_disputed}
+        isSettling={invoice.is_settling}
+      />
 
       <InvoiceFinancials
         faceValue={invoice.amount}
@@ -336,6 +353,7 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           invoiceId={invoice.id}
           totalDue={invoice.amount}
           isSettled={invoice.status === "settled"}
+          lateInterest={lateInterest.accrued}
         />
       )}
 
@@ -349,6 +367,12 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           latePenaltyAccrued={invoice.late_penalty_accrued}
         />
       )}
+
+      <RestructureProposalCard
+        invoiceId={invoice.id}
+        investorClaim={investorClaim}
+        walletAddress={address}
+      />
 
       {/*
         Demand signals (#422) and the maturity countdown (#423) sit directly

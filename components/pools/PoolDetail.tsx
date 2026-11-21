@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PoolSubscriptionPanel } from "@/components/pools/PoolSubscriptionPanel";
+import { YieldCurveChart } from "@/components/pools/YieldCurveChart";
 import { useInvestPoolMutation, useInvoicePool } from "@/hooks/useInvoicePools";
 import { useWallet } from "@/context/WalletContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -181,6 +182,8 @@ export function PoolDetail({ poolId }: { poolId: string }) {
           </CardContent>
         </Card>
       </div>
+
+      <YieldCurveChart poolId={pool.id} />
 
       <Card>
         <CardHeader>

@@ -9,3 +9,5 @@ export {
   IssuerReputationSkeleton,
   ReputationBadge,
 } from "./IssuerReputationPanel";
+export { IssuerTierBadge } from "./IssuerTierBadge";
+export { TierProgressCard } from "./TierProgressCard";

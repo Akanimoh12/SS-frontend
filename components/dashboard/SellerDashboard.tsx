@@ -9,6 +9,7 @@ import { ProfileStatsSkeleton } from "@/components/ui/skeletons";
 import { KycStatusBanner } from "@/components/dashboard/KycStatusBanner";
 import { SellerInvoiceTabs } from "@/components/dashboard/SellerInvoiceTabs";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { TierProgressCard } from "@/components/issuers/TierProgressCard";
 import {
   useSellerDashboard,
   useSellerKycStatus,
@@ -108,6 +109,8 @@ export function SellerDashboard() {
         kycStatus={kycStatus?.status ?? null}
         invoiceCount={data.invoices.length}
       />
+
+      <TierProgressCard address={wallet.address} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Earnings Summary</h2>

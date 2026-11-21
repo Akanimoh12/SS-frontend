@@ -24,6 +24,8 @@ interface SettlementTimelineProps {
   totalDue: number;
   /** Invoice status is `settled`, used to badge the closing payment. */
   isSettled?: boolean;
+  /** Accrued late interest included in the amount owed (#607). */
+  lateInterest?: number | null;
   className?: string;
 }
 
@@ -39,6 +41,7 @@ export function SettlementTimeline({
   invoiceId,
   totalDue,
   isSettled = false,
+  lateInterest = 0,
   className,
 }: SettlementTimelineProps) {
   const { data, isLoading, isError } = useInterimPayments(invoiceId);
@@ -71,8 +74,12 @@ export function SettlementTimeline({
     );
   }
 
+  const accruedInterest =
+    typeof lateInterest === "number" && Number.isFinite(lateInterest) && lateInterest > 0
+      ? lateInterest
+      : 0;
   const summary = buildSettlementTimeline(data?.payments ?? [], {
-    totalDue: data?.total_due ?? totalDue,
+    totalDue: (data?.total_due ?? totalDue) + accruedInterest,
     isSettled,
   });
 
@@ -112,6 +119,14 @@ export function SettlementTimeline({
           >
             {formatPaymentAmount(summary.remaining)} remaining
           </p>
+          {accruedInterest > 0 && (
+            <p
+              className="text-xs text-muted-foreground"
+              data-testid="settlement-late-interest"
+            >
+              Amount owed includes {formatPaymentAmount(accruedInterest)} accrued late interest
+            </p>
+          )}
         </div>
 
         {summary.entries.length === 0 ? (

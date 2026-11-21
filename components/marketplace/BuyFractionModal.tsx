@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { GuardedButton } from "@/components/network/GuardedButton";
 import {
   Dialog,
   DialogContent,
@@ -171,13 +172,13 @@ export function BuyFractionModal({
               <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="buy-cancel-btn">
                 Cancel
               </Button>
-              <Button
+              <GuardedButton
                 onClick={handleConfirm}
                 disabled={!isValid || buyMutation.isPending}
                 data-testid="buy-confirm-btn"
               >
                 {buyMutation.isPending ? "Submitting…" : "Confirm purchase"}
-              </Button>
+              </GuardedButton>
             </>
           )}
         </DialogFooter>

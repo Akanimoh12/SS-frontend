@@ -9,6 +9,7 @@ import { I18nextProvider } from "react-i18next";
 
 import { AuthProvider } from "@/context/AuthContext";
 import { WalletProvider } from "@/context/WalletContext";
+import { NetworkMismatchProvider } from "@/context/NetworkMismatchContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
 import { AccreditationProvider } from "@/context/AccreditationContext";
 import { PlatformOnboardingTour } from "@/components/onboarding/PlatformOnboardingTour";
@@ -52,6 +53,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+    >
+      <QueryClientProvider client={queryClient}>
+        {/* #379 — one shared wallet session for the whole app */}
+        <WalletProvider>
+          {/* #610 — global wrong-network detection and transaction guard */}
+          <NetworkMismatchProvider>
     <I18nextProvider i18n={i18n}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <QueryClientProvider client={queryClient}>
@@ -67,6 +78,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 </AccreditationProvider>
               </CurrencyProvider>
             </AuthProvider>
+          </NetworkMismatchProvider>
+        </WalletProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
           </WalletProvider>
         </QueryClientProvider>
       </ThemeProvider>

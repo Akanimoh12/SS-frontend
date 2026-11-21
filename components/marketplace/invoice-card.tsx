@@ -23,6 +23,7 @@ import { useSuitabilityTier } from "@/hooks/useSuitabilityTier";
 import { REQUIRED_TIER, TIER_LABELS, canInvestInGrade } from "@/lib/suitability";
 import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStatus";
 import { IssuerCreditTierBadge } from "@/components/issuers/IssuerCreditTierBadge";
+import { OverdueChip } from "@/components/invoices/OverdueChip";
 import { IssuerTierBadge } from "@/components/issuers/IssuerTierBadge";
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -76,6 +77,7 @@ export function InvoiceCard({
             <Badge variant={statusVariant[invoice.status]}>
               {invoice.status}
             </Badge>
+            <OverdueChip status={invoice.status} dueDate={invoice.due_date} />
             {showWatchToggle && <WatchlistButton invoiceId={invoice.id} />}
           </div>
         </div>

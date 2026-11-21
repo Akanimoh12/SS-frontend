@@ -159,3 +159,12 @@ export function useAuth(): AuthContextType {
   }
   return context;
 }
+
+/**
+ * Non-throwing auth reader for surfaces that may render outside an
+ * AuthProvider, such as the auction panel embedded in the public invoice view.
+ * Returns null when no provider is mounted.
+ */
+export function useOptionalAuth(): AuthContextType | null {
+  return useContext(AuthContext) ?? null;
+}

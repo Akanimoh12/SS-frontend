@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { allocatePool, weightedAverageYield } from "../pools";
+import {
+  allocatePool,
+  buildYieldCurvePoints,
+  calculatePoolYieldAtUtilization,
+  getCurveSlopes,
+  weightedAverageYield,
+  type PoolRateModelParams,
+} from "../pools";
 import type { PoolInvoice } from "../api";
 
 const basket: PoolInvoice[] = [
@@ -37,5 +44,43 @@ describe("allocatePool", () => {
 
   it("returns zero allocations for a non-positive amount", () => {
     expect(allocatePool(0, basket).every((a) => a.amount === 0)).toBe(true);
+  });
+});
+
+describe("pool yield curve calculations (#598)", () => {
+  const modelParams: PoolRateModelParams = {
+    base_rate: 4,
+    kink_utilization: 80,
+    slope_1: 6,
+    slope_2: 20,
+  };
+
+  it("computes the exact base rate, kink rate, and max rate", () => {
+    expect(calculatePoolYieldAtUtilization(0, modelParams)).toBe(4);
+    expect(calculatePoolYieldAtUtilization(40, modelParams)).toBe(7);
+    expect(calculatePoolYieldAtUtilization(80, modelParams)).toBe(10);
+    expect(calculatePoolYieldAtUtilization(90, modelParams)).toBe(20);
+    expect(calculatePoolYieldAtUtilization(100, modelParams)).toBe(30);
+  });
+
+  it("shows a steeper post-kink slope than pre-kink slope", () => {
+    const slopes = getCurveSlopes(modelParams);
+    expect(slopes.preKinkSlope).toBeCloseTo(0.075);
+    expect(slopes.postKinkSlope).toBeCloseTo(1.0);
+    expect(slopes.postKinkSlope).toBeGreaterThan(slopes.preKinkSlope);
+    expect(slopes.kinkRate).toBe(10);
+    expect(slopes.maxRate).toBe(30);
+  });
+
+  it("includes the kink point in the generated curve points", () => {
+    const nonAlignedParams: PoolRateModelParams = {
+      ...modelParams,
+      kink_utilization: 73,
+    };
+    const points = buildYieldCurvePoints(nonAlignedParams, 10);
+    const kinkPoint = points.find((pt) => pt.isKink);
+    expect(kinkPoint).toBeDefined();
+    expect(kinkPoint?.utilization).toBe(73);
+    expect(kinkPoint?.rate).toBe(10);
   });
 });

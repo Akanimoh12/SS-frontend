@@ -80,6 +80,15 @@ export interface Invoice {
     verified: boolean;
     submitted_at?: string;
   } | null;
+  impact_report?: { type: "environmental" | "social" | "governance" | "combined"; metrics_hash: string; verified: boolean; submitted_at?: string } | null;
+  /** Current debtor address obligated on this invoice (#590). */
+  debtor?: string | null;
+  /** Whether the invoice is currently under dispute (#590). */
+  is_disputed?: boolean;
+  /** Whether the invoice is currently settling (#590). */
+  is_settling?: boolean;
+  /** On-chain issuer tier for marketplace card display (#604). */
+  issuer_tier?: import("@/lib/issuers").IssuerTierName | null;
 }
 
 /** Sector average yield and how many invoices it was computed from (#530). */
@@ -2761,6 +2770,74 @@ export async function confirmTwoFactorSetup(
   if (!res.ok) return readAccountError(res, "Invalid verification code");
 }
 
+/* ─── Privacy settings: data export and account deletion ──────────────── */
+
+export interface DataExportStatus {
+  status: "pending" | "ready" | "failed";
+  download_url?: string;
+  expires_at?: string;
+  error_message?: string;
+  polling_interval_ms?: number;
+}
+
+export interface DeletionRequest {
+  grace_period_end: string;
+}
+
+export interface DeletionBlockingReason {
+  reason: string;
+  details?: string;
+}
+
+export async function requestDataExport(
+  token?: string,
+): Promise<DataExportStatus> {
+  const res = await fetch(`${API_BASE}/users/me/data-export`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) return readAccountError(res, "Failed to request data export");
+  return res.json();
+}
+
+export async function pollDataExportStatus(
+  token?: string,
+): Promise<DataExportStatus> {
+  const res = await fetch(`${API_BASE}/users/me/data-export`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) return readAccountError(res, "Failed to check export status");
+  return res.json();
+}
+
+export async function requestAccountDeletion(
+  token?: string,
+): Promise<DeletionRequest> {
+  const res = await fetch(`${API_BASE}/users/me/account-deletion`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  if (res.status === 409) {
+    const data = await res.json();
+    const error = new Error("Cannot delete account");
+    (error as any).status = 409;
+    (error as any).blocking_reasons = data.blocking_reasons || [];
+    throw error;
+  }
+  if (!res.ok)
+    return readAccountError(res, "Failed to request account deletion");
+  return res.json();
+}
+
+export async function cancelAccountDeletion(token?: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/users/me/account-deletion`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok)
+    return readAccountError(res, "Failed to cancel deletion request");
+}
+
 // ─── Issuer reputation (#490) ────────────────────────────────────────────
 
 export interface IssuerReputationEvent {
@@ -3189,6 +3266,43 @@ export async function investInPool(
   );
   if (!res.ok) throw new Error("Pool investment failed");
   return res.json();
+}
+
+export type { PoolRateModel, PoolRateModelParams } from "@/lib/pools";
+
+/** Fetches the dynamic utilization rate model parameters and current point for a pool (#598). */
+export async function fetchPoolRateModel(poolId: string): Promise<import("@/lib/pools").PoolRateModel> {
+  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(poolId)}/rate-model`);
+  if (res.status === 404) throw new ApiNotFoundError("Pool rate model not found");
+  if (!res.ok) throw new Error("Failed to fetch pool rate model");
+  const raw = await res.json();
+  const base_rate = Number(raw.base_rate ?? raw.baseRate ?? 0);
+  const kink_utilization = Number(raw.kink_utilization ?? raw.kinkUtilization ?? raw.kink ?? 80);
+  const slope_1 = Number(raw.slope_1 ?? raw.slope1 ?? 0);
+  const slope_2 = Number(raw.slope_2 ?? raw.slope2 ?? 0);
+  const current_utilization = Number(
+    raw.current_utilization ?? raw.currentUtilization ?? raw.utilization ?? 0,
+  );
+  const { calculatePoolYieldAtUtilization } = await import("@/lib/pools");
+  const current_rate =
+    raw.current_rate !== undefined || raw.currentRate !== undefined
+      ? Number(raw.current_rate ?? raw.currentRate)
+      : calculatePoolYieldAtUtilization(current_utilization, {
+          base_rate,
+          kink_utilization,
+          slope_1,
+          slope_2,
+        });
+
+  return {
+    pool_id: String(raw.pool_id ?? raw.poolId ?? poolId),
+    base_rate,
+    kink_utilization,
+    slope_1,
+    slope_2,
+    current_utilization,
+    current_rate,
+  };
 }
 
 /* ─── Pool subscriptions (#544) ────────────────────────────────────────────
@@ -5165,4 +5279,373 @@ export async function fetchInvoiceLeaderboard(
   );
   if (!res.ok) throw new Error("Failed to fetch invoice leaderboard");
   return res.json();
+}
+
+/* ─── Debtor assignment consent flow (#590) ────────────────────────────────── */
+
+export type InvoiceAssignmentParty = "issuer" | "old_debtor" | "new_debtor";
+export type InvoiceAssignmentStatus = "none" | "pending" | "finalized" | "cancelled";
+
+export interface InvoiceAssignmentConsents {
+  issuer: boolean;
+  old_debtor: boolean;
+  new_debtor: boolean;
+}
+
+export interface InvoiceAssignment {
+  invoice_id: string;
+  status: InvoiceAssignmentStatus;
+  issuer_address: string;
+  current_debtor: string;
+  old_debtor: string;
+  proposed_new_debtor: string | null;
+  consents: InvoiceAssignmentConsents;
+  is_disputed?: boolean;
+  is_settling?: boolean;
+  blocked_reason?: string | null;
+  updated_at?: string | null;
+}
+
+function normalizeInvoiceAssignment(raw: any, invoiceId: string): InvoiceAssignment {
+  const consentsRaw = raw?.consents ?? {};
+  const consents: InvoiceAssignmentConsents = {
+    issuer: Boolean(consentsRaw.issuer ?? raw?.issuer_consented ?? raw?.issuerConsented ?? false),
+    old_debtor: Boolean(
+      consentsRaw.old_debtor ??
+        consentsRaw.oldDebtor ??
+        raw?.old_debtor_consented ??
+        raw?.oldDebtorConsented ??
+        false,
+    ),
+    new_debtor: Boolean(
+      consentsRaw.new_debtor ??
+        consentsRaw.newDebtor ??
+        raw?.new_debtor_consented ??
+        raw?.newDebtorConsented ??
+        false,
+    ),
+  };
+
+  const allConsented = consents.issuer && consents.old_debtor && consents.new_debtor;
+  const proposed =
+    raw?.proposed_new_debtor ?? raw?.proposedNewDebtor ?? raw?.new_debtor ?? null;
+  const oldDebtor = String(raw?.old_debtor ?? raw?.oldDebtor ?? raw?.current_debtor ?? "");
+
+  let status: InvoiceAssignmentStatus = (raw?.status ?? "none") as InvoiceAssignmentStatus;
+  if (status === "pending" && allConsented && proposed) {
+    status = "finalized";
+  }
+
+  const currentDebtor =
+    status === "finalized" && proposed
+      ? String(proposed)
+      : String(raw?.current_debtor ?? raw?.currentDebtor ?? oldDebtor);
+
+  return {
+    invoice_id: String(raw?.invoice_id ?? raw?.invoiceId ?? invoiceId),
+    status,
+    issuer_address: String(raw?.issuer_address ?? raw?.issuerAddress ?? raw?.issuer ?? ""),
+    current_debtor: currentDebtor,
+    old_debtor: oldDebtor,
+    proposed_new_debtor: proposed ? String(proposed) : null,
+    consents,
+    is_disputed: Boolean(raw?.is_disputed ?? raw?.isDisputed ?? false),
+    is_settling: Boolean(raw?.is_settling ?? raw?.isSettling ?? false),
+    blocked_reason: raw?.blocked_reason ?? raw?.blockedReason ?? null,
+    updated_at: raw?.updated_at ?? raw?.updatedAt ?? null,
+  };
+}
+
+export async function fetchInvoiceAssignment(
+  invoiceId: string,
+): Promise<InvoiceAssignment | null> {
+  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/assignment`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to fetch invoice assignment");
+  const raw = await res.json();
+  return normalizeInvoiceAssignment(raw, invoiceId);
+}
+
+export async function proposeInvoiceAssignment(
+  invoiceId: string,
+  body: { proposed_new_debtor: string; wallet: string },
+): Promise<InvoiceAssignment> {
+  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/assignment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method: "propose_assignment", ...body }),
+  });
+  if (!res.ok) throw new Error("Failed to propose debtor assignment");
+  const raw = await res.json();
+  return normalizeInvoiceAssignment(raw, invoiceId);
+}
+
+export async function consentInvoiceAssignment(
+  invoiceId: string,
+  body: { party: InvoiceAssignmentParty; wallet: string },
+): Promise<InvoiceAssignment> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/assignment/consent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "consent_assignment", ...body }),
+    },
+  );
+  if (!res.ok) throw new Error("Failed to record assignment consent");
+  const raw = await res.json();
+  return normalizeInvoiceAssignment(raw, invoiceId);
+}
+
+export async function cancelInvoiceAssignment(
+  invoiceId: string,
+  body: { wallet: string },
+): Promise<InvoiceAssignment> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/assignment/cancel`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "cancel_assignment", ...body }),
+    },
+  );
+  if (!res.ok) throw new Error("Failed to cancel debtor assignment");
+  const raw = await res.json();
+  return normalizeInvoiceAssignment(raw, invoiceId);
+}
+
+/* ─── Restructuring proposal voting (#589) ─────────────────────────────────── */
+
+export type RestructureVoteDecision = "accept" | "reject";
+export type RestructureProposalStatus = "active" | "executed" | "failed";
+
+export interface RestructureProposal {
+  id: string;
+  invoice_id: string;
+  /** Haircut percentage reduction (0-100), e.g. 20 means 20% haircut and 80% recovery. */
+  haircut_percentage: number;
+  /** Proposed new due date (ISO timestamp). */
+  new_due_date: string;
+  /** Total principal eligible to vote, in XLM. */
+  total_principal: number;
+  /** Principal weight that voted to accept, in XLM. */
+  accepted_principal: number;
+  /** Principal weight that voted to reject, in XLM. */
+  rejected_principal: number;
+  /** Configured supermajority threshold in percent (e.g. 66.67 or 75). */
+  supermajority_threshold_pct: number;
+  /** Voting period end timestamp (ISO string). */
+  ends_at: string;
+  status: RestructureProposalStatus;
+  /** Optional map of wallet address -> vote decision. */
+  voted_wallets?: Record<string, RestructureVoteDecision>;
+  /** Optional connected investor's recorded vote decision. */
+  user_vote?: RestructureVoteDecision | null;
+  reason?: string | null;
+}
+
+/**
+ * Computes an investor's recovery amount after applying the proposal's haircut
+ * percentage (#589).
+ */
+export function calculateRestructureRecovery(
+  investorClaim: number,
+  haircutPercentage: number,
+): number {
+  if (!(investorClaim > 0)) return 0;
+  const clampedHaircut = Math.min(100, Math.max(0, haircutPercentage));
+  const recovery = investorClaim * (1 - clampedHaircut / 100);
+  return Math.round(recovery * 100) / 100;
+}
+
+function normalizeRestructureProposal(raw: any, invoiceId: string): RestructureProposal {
+  const rawStatus = String(raw?.status ?? "active").toLowerCase();
+  const status: RestructureProposalStatus =
+    rawStatus === "executed"
+      ? "executed"
+      : rawStatus === "failed" || rawStatus === "rejected"
+        ? "failed"
+        : "active";
+
+  return {
+    id: String(raw?.id ?? raw?.proposal_id ?? `restructure-${invoiceId}`),
+    invoice_id: String(raw?.invoice_id ?? raw?.invoiceId ?? invoiceId),
+    haircut_percentage: Number(
+      raw?.haircut_percentage ?? raw?.haircutPercentage ?? raw?.haircut ?? 0,
+    ),
+    new_due_date: String(
+      raw?.new_due_date ?? raw?.newDueDate ?? raw?.proposed_due_date ?? "",
+    ),
+    total_principal: Number(
+      raw?.total_principal ?? raw?.totalPrincipal ?? raw?.total_weight ?? 0,
+    ),
+    accepted_principal: Number(
+      raw?.accepted_principal ?? raw?.acceptedPrincipal ?? raw?.votes_for ?? 0,
+    ),
+    rejected_principal: Number(
+      raw?.rejected_principal ?? raw?.rejectedPrincipal ?? raw?.votes_against ?? 0,
+    ),
+    supermajority_threshold_pct: Number(
+      raw?.supermajority_threshold_pct ??
+        raw?.supermajorityThresholdPct ??
+        raw?.supermajority_threshold ??
+        raw?.threshold_pct ??
+        66.67,
+    ),
+    ends_at: String(raw?.ends_at ?? raw?.endsAt ?? ""),
+    status,
+    voted_wallets:
+      raw?.voted_wallets && typeof raw.voted_wallets === "object"
+        ? raw.voted_wallets
+        : undefined,
+    user_vote: raw?.user_vote ?? raw?.userVote ?? null,
+    reason: raw?.reason ?? null,
+  };
+}
+
+export async function fetchRestructureProposal(
+  invoiceId: string,
+  wallet?: string | null,
+): Promise<RestructureProposal | null> {
+  const query = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/restructure-proposal${query}`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to fetch restructuring proposal");
+  const raw = await res.json();
+  return normalizeRestructureProposal(raw, invoiceId);
+}
+
+export async function voteOnRestructureProposal(
+  invoiceId: string,
+  body: {
+    wallet: string;
+    decision: RestructureVoteDecision;
+    principal?: number;
+  },
+): Promise<RestructureProposal> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/restructure-proposal/votes`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "vote_restructure", ...body }),
+    },
+  );
+  if (!res.ok) throw new Error("Failed to submit restructuring vote");
+  const raw = await res.json();
+  return normalizeRestructureProposal(raw, invoiceId);
+}
+
+/* ─── Issuer tier, limits & progress (#604) ────────────────────────────────── */
+
+export type {
+  IssuerTierConfig,
+  IssuerTierDemotion,
+  IssuerTierHistoryCounts,
+  IssuerTierLimits,
+  IssuerTierName,
+  IssuerTierNextRequirements,
+  IssuerTierStatus,
+} from "@/lib/issuers";
+
+export async function fetchIssuerTier(
+  address: string,
+): Promise<import("@/lib/issuers").IssuerTierStatus | null> {
+  const res = await fetch(`${API_BASE}/issuers/${encodeURIComponent(address)}/tier`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to fetch issuer tier");
+  const raw = await res.json();
+
+  const {
+    ISSUER_TIER_CONFIGS,
+    getNextIssuerTier,
+    normalizeIssuerTierName,
+  } = await import("@/lib/issuers");
+
+  const tier = normalizeIssuerTierName(raw?.tier);
+  const config = ISSUER_TIER_CONFIGS[tier];
+  const limitsRaw = raw?.limits ?? raw ?? {};
+  const historyRaw = raw?.history ?? raw ?? {};
+
+  const nextTier = getNextIssuerTier(tier);
+  const nextRaw = raw?.next_tier_requirements ?? raw?.nextTierRequirements;
+  const next_tier_requirements = nextTier
+    ? {
+        next_tier: nextRaw?.next_tier
+          ? normalizeIssuerTierName(nextRaw.next_tier)
+          : nextTier,
+        required_settled_count: Number(
+          nextRaw?.required_settled_count ??
+            nextRaw?.requiredSettledCount ??
+            ISSUER_TIER_CONFIGS[nextTier].min_settled_count,
+        ),
+        max_allowed_late_count: Number(
+          nextRaw?.max_allowed_late_count ??
+            nextRaw?.maxAllowedLateCount ??
+            ISSUER_TIER_CONFIGS[nextTier].max_late_count,
+        ),
+      }
+    : null;
+
+  const demotionRaw = raw?.demotion;
+  const demotion =
+    demotionRaw && (demotionRaw.demoted || demotionRaw.reason)
+      ? {
+          demoted: Boolean(demotionRaw.demoted ?? true),
+          previous_tier: demotionRaw.previous_tier
+            ? normalizeIssuerTierName(demotionRaw.previous_tier)
+            : null,
+          reason: String(
+            demotionRaw.reason ?? "Demoted due to an invoice default.",
+          ),
+          demoted_at: demotionRaw.demoted_at ?? demotionRaw.demotedAt ?? null,
+        }
+      : raw?.demoted || raw?.demotion_reason
+        ? {
+            demoted: true,
+            previous_tier: raw?.previous_tier
+              ? normalizeIssuerTierName(raw.previous_tier)
+              : null,
+            reason: String(
+              raw.demotion_reason ?? "Demoted due to an invoice default.",
+            ),
+            demoted_at: raw?.demoted_at ?? null,
+          }
+        : null;
+
+  return {
+    address: String(raw?.address ?? raw?.wallet ?? address),
+    tier,
+    limits: {
+      max_invoice_value: Number(
+        limitsRaw.max_invoice_value ??
+          limitsRaw.maxInvoiceValue ??
+          config.max_invoice_value,
+      ),
+      max_open_exposure: Number(
+        limitsRaw.max_open_exposure ??
+          limitsRaw.maxOpenExposure ??
+          config.max_open_exposure,
+      ),
+      current_open_exposure: Number(
+        limitsRaw.current_open_exposure ??
+          limitsRaw.currentOpenExposure ??
+          limitsRaw.open_exposure ??
+          0,
+      ),
+    },
+    history: {
+      settled_count: Number(
+        historyRaw.settled_count ?? historyRaw.settledCount ?? 0,
+      ),
+      late_count: Number(historyRaw.late_count ?? historyRaw.lateCount ?? 0),
+      defaulted_count: Number(
+        historyRaw.defaulted_count ?? historyRaw.defaultedCount ?? 0,
+      ),
+    },
+    next_tier_requirements,
+    demotion,
+  };
 }

@@ -60,6 +60,7 @@ import { CurrencyToggle } from "@/components/layout/CurrencyToggle";
 import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStatus";
 import { ImpactReport } from "@/components/invoices/ImpactReport";
 import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
+import { RateAuctionPanel } from "@/components/invoices/RateAuctionPanel";
 import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
 import { RestructureProposalCard } from "@/components/invoices/RestructureProposalCard";
 
@@ -462,6 +463,9 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
       <OrderBookDepthChart invoiceId={invoice.id} />
 
       <DynamicYieldCard wallet={invoice.seller} invoiceRate={invoice.yield_percentage} />
+
+      {/* Descending-rate auction, rendered only when the backend reports one (#594). */}
+      <RateAuctionPanel invoiceId={invoice.id} />
 
       {/* Invest CTA — KYC gated. */}
       {isOpenForInvestment ? (

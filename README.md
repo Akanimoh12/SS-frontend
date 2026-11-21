@@ -168,6 +168,15 @@ A parallel tokenized system, per creator:
 - **Timelock proposals**: `TimelockProposalsPanel`, `useTimelockProposals` → `fetchTimelockProposals()`, `executeTimelockProposal()`, `cancelTimelockProposal()`.
 - **Audit log**: `AuditLogViewer` → `fetchAuditLog()`.
 
+### V1 Finance Surfaces
+
+- **Portfolio concentration**: `ConcentrationPanel`, `ExposureTreemap`, `usePortfolioConcentration` → pure grouping in `lib/analytics/concentration.ts` (#597).
+- **Vault reconciliation**: `VaultReconciliationView` at `/admin/vaults`, `useVaultReconciliation` → `fetchVaultReconciliation()` (#596).
+- **Issuer netting**: `NettingPage` at `/issuer/netting`, `NewNettingWizard`, `NetPreview` → netting API and `lib/analytics/netting.ts` (#595).
+- **Rate auctions**: `RateAuctionPanel`, `RateStepChart`, `useRateAuction` → `fetchRateAuction()` and `lib/analytics/rateAuction.ts` (#594).
+
+Expected backend response shapes and the documented failure behavior are in [docs/FRONTEND_V1_SURFACES.md](./docs/FRONTEND_V1_SURFACES.md).
+
 ### Notifications & Activity
 
 - `NotificationList`, `NotificationPreferences`, `NotificationBellBadge`, `useNotifications`/`useNotificationPreferences` → `fetchNotificationPreferences()`, `updateNotificationPreference()`. Notification events: `"new_invoice" | "funding_milestone" | "settlement"`; channels: `"email" | "in_app"`.

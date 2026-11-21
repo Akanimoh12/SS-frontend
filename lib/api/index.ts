@@ -2,6 +2,14 @@ import { parseInvestError } from "@/lib/investCurrency";
 import type { InvestmentPosition } from "@/lib/portfolio";
 import type { KycTier } from "@/lib/kycTier";
 import type { IssuerProfile } from "@/lib/issuers";
+import type { VaultReconciliationData } from "@/lib/analytics/vaultReconciliation";
+import type {
+  NettingAgreement,
+  NettingDirection,
+  NettingInvoice,
+  NettingParty,
+} from "@/lib/analytics/netting";
+import type { RateAuctionData } from "@/lib/analytics/rateAuction";
 
 export type { KycTier, IssuerProfile };
 
@@ -5281,6 +5289,152 @@ export async function fetchInvoiceLeaderboard(
   return res.json();
 }
 
+/* ─── V1 finance surfaces (#594, #595, #596) ────────────────────────────────
+ *
+ * The backend routes below are part of the documented frontend contract in
+ * docs/FRONTEND_V1_SURFACES.md. Until they ship, callers receive a rejected
+ * promise and render the documented unavailable state rather than fake data.
+ */
+
+export async function fetchVaultReconciliation(
+  jwt?: string,
+): Promise<VaultReconciliationData> {
+  const res = await fetch(`${API_BASE}/admin/vaults/reconciliation`, {
+    headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+  });
+  if (!res.ok) throw new Error("Failed to fetch vault reconciliation");
+  return res.json();
+}
+
+export async function fetchNettingAgreements(jwt?: string): Promise<NettingAgreement[]> {
+  const res = await fetch(`${API_BASE}/issuer/netting/agreements`, {
+    headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+  });
+  if (!res.ok) throw new Error("Failed to fetch netting agreements");
+  return res.json();
+}
+
+/** Invoice candidates for a new netting proposal, including their investors. */
+export async function fetchNettingInvoices(jwt?: string): Promise<NettingInvoice[]> {
+  const res = await fetch(`${API_BASE}/issuer/netting/invoices`, {
+    headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+  });
+  if (!res.ok) throw new Error("Failed to fetch netting candidates");
+  return res.json();
+}
+
+export interface ProposeNettingInput {
+  debtor: string;
+  creditor: string;
+  invoices: Array<{
+    id: string;
+    direction: NettingDirection;
+    amount: number;
+  }>;
+}
+
+export async function proposeNettingAgreement(
+  input: ProposeNettingInput,
+  jwt?: string,
+): Promise<NettingAgreement> {
+  const res = await fetch(`${API_BASE}/issuer/netting/agreements`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw parseInvestError(await res.json().catch(() => null));
+  return res.json();
+}
+
+export async function respondNettingConsent(
+  agreementId: string,
+  party: NettingParty,
+  consent: boolean,
+  jwt?: string,
+): Promise<NettingAgreement> {
+  const res = await fetch(
+    `${API_BASE}/issuer/netting/agreements/${encodeURIComponent(agreementId)}/consent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify({ party, consent }),
+    },
+  );
+  if (!res.ok) throw parseInvestError(await res.json().catch(() => null));
+  return res.json();
+}
+
+export async function settleNettingAgreement(
+  agreementId: string,
+  jwt?: string,
+): Promise<NettingAgreement> {
+  const res = await fetch(
+    `${API_BASE}/issuer/netting/agreements/${encodeURIComponent(agreementId)}/settle`,
+    {
+      method: "POST",
+      headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+    },
+  );
+  if (!res.ok) throw parseInvestError(await res.json().catch(() => null));
+  return res.json();
+}
+
+export async function cancelNettingAgreement(
+  agreementId: string,
+  jwt?: string,
+): Promise<NettingAgreement> {
+  const res = await fetch(
+    `${API_BASE}/issuer/netting/agreements/${encodeURIComponent(agreementId)}/cancel`,
+    {
+      method: "POST",
+      headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined,
+    },
+  );
+  if (!res.ok) throw parseInvestError(await res.json().catch(() => null));
+  return res.json();
+}
+
+export async function fetchRateAuction(
+  invoiceId: string,
+): Promise<RateAuctionData | null> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/rate-auction`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to fetch rate auction");
+  return res.json();
+}
+
+export interface CommitRateAuctionInput {
+  invoiceId: string;
+  amount: number;
+  /** Rate displayed and locked at the moment of commitment. */
+  lockedRate: number;
+}
+
+export async function commitRateAuction(
+  input: CommitRateAuctionInput,
+  jwt?: string,
+): Promise<{ commitment_id: string }> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(input.invoiceId)}/rate-auction/commit`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify({ amount: input.amount, locked_rate: input.lockedRate }),
+    },
+  );
+  if (!res.ok) throw parseInvestError(await res.json().catch(() => null));
+  return res.json();
 /* ─── Debtor assignment consent flow (#590) ────────────────────────────────── */
 
 export type InvoiceAssignmentParty = "issuer" | "old_debtor" | "new_debtor";

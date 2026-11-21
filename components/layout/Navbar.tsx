@@ -59,6 +59,12 @@ export function Navbar() {
                 Secondary market
               </Link>
               <Link
+                href="/portfolio/cash-flow"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Cash flow
+              </Link>
+              <Link
                 href="/activity"
                 className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
               >

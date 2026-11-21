@@ -30,6 +30,7 @@ import { InvoiceMetaTags } from "@/components/invoices/InvoiceMetaTags";
 import { InvestorSocialProof } from "@/components/invoices/InvestorSocialProof";
 import { InvoiceStatusBadge } from "@/components/invoices/InvoiceStatusBadge";
 import { ReturnsCalculator } from "@/components/invoices/ReturnsCalculator";
+import { ReturnSimulator } from "@/components/invoices/ReturnSimulator";
 import { InvestmentModal } from "@/components/invoices/InvestmentModal";
 import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
 import { ReturnsBreakdown } from "@/components/invoices/ReturnsBreakdown";
@@ -133,6 +134,9 @@ function InvestCallToAction({
   maturityDate,
   fractionPrice,
   trancheStatus,
+  guaranteePercentage,
+  coverPercentage,
+  collateralAmount,
 }: {
   invoiceId: string;
   minInvestment: number;
@@ -142,6 +146,9 @@ function InvestCallToAction({
   maturityDate: string;
   fractionPrice?: number;
   trancheStatus?: NonNullable<import("@/lib/api").Invoice["tranche_status"]>;
+  guaranteePercentage?: number | null;
+  coverPercentage?: number | null;
+  collateralAmount?: number | null;
 }) {
   const [selectedTranche, setSelectedTranche] = useState<1 | 2>(1);
   const { isConnected } = useWallet();
@@ -192,6 +199,15 @@ function InvestCallToAction({
           yieldPercentage={yieldPercentage}
           maturityDate={maturityDate}
           fractionPrice={fractionPrice}
+        />
+        <ReturnSimulator
+          faceValue={fundingCap}
+          yieldPercentage={yieldPercentage}
+          maturityDate={maturityDate}
+          fractionPrice={fractionPrice}
+          guaranteePercentage={guaranteePercentage}
+          coverPercentage={coverPercentage}
+          collateralAmount={collateralAmount}
         />
       </>
     );
@@ -470,6 +486,9 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           maturityDate={invoice.maturity_date ?? invoice.due_date}
           fractionPrice={invoice.fraction_price}
           trancheStatus={invoice.tranche_status ?? undefined}
+          guaranteePercentage={invoice.guarantee_percentage}
+          coverPercentage={invoice.cover_percentage}
+          collateralAmount={invoice.collateral_amount}
         />
       ) : (
         <Card data-testid="invest-cta">

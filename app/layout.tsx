@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 import { AppErrorBoundary } from "@/components/ErrorBoundary";
-import { Navbar, Footer } from "@/components/layout";
+import { Navbar, Footer, SkipLinks, RouteFocus } from "@/components/layout";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,6 +23,9 @@ export default function RootLayout({
       <body>
         <TooltipProvider>
           <Providers>
+            {/* #652: the skip links must be the first Tab stop on every route. */}
+            <SkipLinks />
+            <RouteFocus />
             {/* #443 — shown on every page while the testnet is selected */}
             <NetworkBanner />
             <Navbar />

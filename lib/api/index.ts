@@ -2569,9 +2569,9 @@ export async function fetchInvoiceNav(
 }
 
 export const INVOICE_REPORT_REASONS = [
-  "misrepresentation",
-  "false_documents",
-  "non_delivery",
+  "forged_invoice",
+  "duplicate_listing",
+  "issuer_misrepresentation",
   "other",
 ] as const;
 export type InvoiceReportReason = (typeof INVOICE_REPORT_REASONS)[number];
@@ -2611,6 +2611,31 @@ export async function submitInvoiceReport(
       await readErrorMessage(res, "Failed to submit invoice report"),
     );
   return res.json();
+}
+
+export interface InvoiceReport {
+  report_id: string;
+  invoice_id: string;
+  reason: InvoiceReportReason;
+  status: "pending" | "approved" | "rejected" | "needs_more_info";
+  created_at: string;
+  updated_at: string;
+  description?: string;
+}
+
+export interface MyReportsResponse {
+  reports: InvoiceReport[];
+}
+
+export async function fetchMyInvoiceReports(
+  token?: string,
+): Promise<InvoiceReport[]> {
+  const res = await fetch(`${API_BASE}/my-reports`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch my reports");
+  const data: MyReportsResponse = await res.json();
+  return data.reports;
 }
 
 export interface ContractVersion {

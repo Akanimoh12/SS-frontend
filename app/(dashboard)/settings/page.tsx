@@ -46,6 +46,13 @@ export default function SettingsPage() {
       >
         Account settings →
       </Link>
+      <br />
+      <Link
+        href="/settings/privacy"
+        className="inline-block text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        Privacy settings →
+      </Link>
     </main>
   );
 }

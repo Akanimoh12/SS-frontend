@@ -29,6 +29,9 @@ import { InvoiceMaturitySection } from "@/components/invoices/InvoiceMaturitySec
 import { InvoiceMetaTags } from "@/components/invoices/InvoiceMetaTags";
 import { InvestorSocialProof } from "@/components/invoices/InvestorSocialProof";
 import { InvoiceStatusBadge } from "@/components/invoices/InvoiceStatusBadge";
+import { AttestationList } from "@/components/attestations/AttestationList";
+import { DebtorStatusBadge } from "@/components/debtor/DebtorStatusBadge";
+import { WatchWarning } from "@/components/debtor/WatchWarning";
 import { ReturnsCalculator } from "@/components/invoices/ReturnsCalculator";
 import { InvestmentModal } from "@/components/invoices/InvestmentModal";
 import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
@@ -62,6 +65,8 @@ import { ImpactReport } from "@/components/invoices/ImpactReport";
 import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
 import { RateAuctionPanel } from "@/components/invoices/RateAuctionPanel";
 import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
+import { OverdueBanner } from "@/components/invoices/OverdueBanner";
+import { useLateInterest } from "@/hooks/useLateInterest";
 import { RestructureProposalCard } from "@/components/invoices/RestructureProposalCard";
 
 function InvoiceDetailSkeleton() {
@@ -311,6 +316,7 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <CurrencyToggle showRate={false} />
                 <InvoiceStatusBadge status={invoice.status} />
+                <DebtorStatusBadge debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
                 <DaysRemainingBadge dueDate={invoice.due_date} status={invoice.status} />
                 <WatchlistButton invoiceId={invoice.id} />
                 <ShareInvoiceButton invoiceId={invoice.id} title={invoice.title} />
@@ -337,6 +343,7 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         isDisputed={invoice.is_disputed}
         isSettling={invoice.is_settling}
       />
+      <WatchWarning debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
 
       <InvoiceFinancials
         faceValue={invoice.amount}
@@ -503,6 +510,8 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
       <SyndicatePanel invoiceId={invoice.id} />
 
       <AnnouncementFeed invoiceId={invoice.id} />
+
+      <AttestationList invoiceId={invoice.id} />
 
       <InvoiceDocumentsTab
         invoiceId={invoice.id}

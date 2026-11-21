@@ -50,6 +50,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InvoiceCardSkeleton } from "@/components/ui/skeletons";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OverdueChip } from "@/components/invoices/OverdueChip";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WatchlistButton } from "@/components/marketplace/WatchlistButton";
@@ -110,6 +111,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
             <Badge variant={invoice.status === "open" ? "default" : "secondary"}>
               {invoice.status}
             </Badge>
+            <OverdueChip status={invoice.status} dueDate={invoice.due_date} />
             <WatchlistButton invoiceId={invoice.id} />
           </div>
         </div>

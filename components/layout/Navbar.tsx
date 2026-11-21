@@ -11,6 +11,7 @@ import { UsdcBalanceChip } from "@/components/wallet/UsdcBalanceChip";
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
 import { CurrencyToggle } from "./CurrencyToggle";
 import { NetworkBadge } from "@/components/network/NetworkBadge";
+import { WhatsNewButton } from "@/components/changelog/WhatsNewButton";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { cn } from "@/lib/utils";
 
@@ -87,6 +88,8 @@ export function Navbar() {
           )}
           {/* #443 — app-wide Stellar network badge */}
           <NetworkBadge />
+          {/* #611 — what's new changelog with unread indicator */}
+          <WhatsNewButton />
           {/* #437 — USD / XLM display toggle */}
           <CurrencyToggle />
           {isConnected ? (

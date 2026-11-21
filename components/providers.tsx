@@ -8,6 +8,7 @@ import { notifyApiError } from "@/lib/apiErrors";
 
 import { AuthProvider } from "@/context/AuthContext";
 import { WalletProvider } from "@/context/WalletContext";
+import { NetworkMismatchProvider } from "@/context/NetworkMismatchContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
 import { AccreditationProvider } from "@/context/AccreditationContext";
 import { PlatformOnboardingTour } from "@/components/onboarding/PlatformOnboardingTour";
@@ -33,16 +34,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         {/* #379 — one shared wallet session for the whole app */}
         <WalletProvider>
-          <AuthProvider>
-            {/* #437 — one shared display currency + live XLM/USD rate for the app */}
-            <CurrencyProvider>
-              <AccreditationProvider>
-                {children}
-                <PlatformOnboardingTour />
-                <Toaster position="top-right" />
-              </AccreditationProvider>
-            </CurrencyProvider>
-          </AuthProvider>
+          {/* #610 — global wrong-network detection and transaction guard */}
+          <NetworkMismatchProvider>
+            <AuthProvider>
+              {/* #437 — one shared display currency + live XLM/USD rate for the app */}
+              <CurrencyProvider>
+                <AccreditationProvider>
+                  {children}
+                  <PlatformOnboardingTour />
+                  <Toaster position="top-right" />
+                </AccreditationProvider>
+              </CurrencyProvider>
+            </AuthProvider>
+          </NetworkMismatchProvider>
         </WalletProvider>
       </QueryClientProvider>
     </ThemeProvider>

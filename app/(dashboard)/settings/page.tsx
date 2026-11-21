@@ -46,6 +46,13 @@ export default function SettingsPage() {
       >
         Account settings →
       </Link>
+      <br />
+      <Link
+        href="/settings/my-reports"
+        className="inline-block text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        My Reports →
+      </Link>
     </main>
   );
 }

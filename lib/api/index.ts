@@ -12,7 +12,14 @@ export interface Invoice {
   amount: number;
   raised: number;
   investor_count: number;
-  status: "draft" | "pending" | "open" | "funded" | "settled" | "rejected" | "defaulted";
+  status:
+    | "draft"
+    | "pending"
+    | "open"
+    | "funded"
+    | "settled"
+    | "rejected"
+    | "defaulted";
   due_date: string;
   yield_percentage?: number;
   /** Price of one fraction in XLM; the calculator assumes 1 XLM when absent. */
@@ -60,10 +67,19 @@ export interface Invoice {
   greylist?: { reason?: string | null; clears_at?: string | null } | null;
   /** Optional tranche state returned for invoices using the tranche contract. */
   tranche_status?: {
-    senior_pct: number; junior_pct: number; senior_filled: number;
-    junior_filled: number; junior_yield_premium_bps: number; is_settled: boolean;
+    senior_pct: number;
+    junior_pct: number;
+    senior_filled: number;
+    junior_filled: number;
+    junior_yield_premium_bps: number;
+    is_settled: boolean;
   } | null;
-  impact_report?: { type: "environmental" | "social" | "governance" | "combined"; metrics_hash: string; verified: boolean; submitted_at?: string } | null;
+  impact_report?: {
+    type: "environmental" | "social" | "governance" | "combined";
+    metrics_hash: string;
+    verified: boolean;
+    submitted_at?: string;
+  } | null;
 }
 
 /** Sector average yield and how many invoices it was computed from (#530). */
@@ -160,8 +176,12 @@ export interface IssuerCreditScore {
   factors: Record<string, number>;
 }
 
-export async function fetchIssuerCreditScore(wallet: string): Promise<IssuerCreditScore | null> {
-  const res = await fetch(`${API_BASE}/issuers/${encodeURIComponent(wallet)}/credit-score`);
+export async function fetchIssuerCreditScore(
+  wallet: string,
+): Promise<IssuerCreditScore | null> {
+  const res = await fetch(
+    `${API_BASE}/issuers/${encodeURIComponent(wallet)}/credit-score`,
+  );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error("Failed to fetch issuer credit score");
   return res.json();
@@ -174,8 +194,12 @@ export interface DynamicYieldResponse {
   adjustment_history: { rate: number; effective_at: string; reason?: string }[];
 }
 
-export async function fetchDynamicYield(wallet: string): Promise<DynamicYieldResponse | null> {
-  const res = await fetch(`${API_BASE}/issuers/${encodeURIComponent(wallet)}/dynamic-yield`);
+export async function fetchDynamicYield(
+  wallet: string,
+): Promise<DynamicYieldResponse | null> {
+  const res = await fetch(
+    `${API_BASE}/issuers/${encodeURIComponent(wallet)}/dynamic-yield`,
+  );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error("Failed to fetch issuer yield history");
   return res.json();
@@ -417,7 +441,11 @@ export async function investInInvoice(
   const res = await fetch(`${API_BASE}/invoices/${invoiceId}/invest`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount, ...(currency ? { currency } : {}), ...(trancheType ? { tranche_type: trancheType } : {}) }),
+    body: JSON.stringify({
+      amount,
+      ...(currency ? { currency } : {}),
+      ...(trancheType ? { tranche_type: trancheType } : {}),
+    }),
   });
   if (!res.ok) {
     if (currency) {
@@ -516,7 +544,8 @@ export async function unwatchInvoiceOnRegistry(
       headers: authHeaders(token),
     },
   );
-  if (!res.ok) throw new Error("Failed to remove invoice from watchlist registry");
+  if (!res.ok)
+    throw new Error("Failed to remove invoice from watchlist registry");
   return res.json();
 }
 
@@ -600,7 +629,9 @@ export async function fetchKycDocuments(
   const docs = Array.isArray(payload) ? payload : (payload.documents ?? []);
   return docs
     .map(normalizeKycDocument)
-    .filter((d: KycDocumentStatus | null): d is KycDocumentStatus => d !== null);
+    .filter(
+      (d: KycDocumentStatus | null): d is KycDocumentStatus => d !== null,
+    );
 }
 
 /**
@@ -625,7 +656,11 @@ export async function resubmitKycDocument(
   }
   const payload = await res.json().catch(() => null);
   return (
-    normalizeKycDocument({ type, ...payload, status: payload?.status ?? "pending" }) ?? {
+    normalizeKycDocument({
+      type,
+      ...payload,
+      status: payload?.status ?? "pending",
+    }) ?? {
       type,
       status: "pending",
       submitted_at: new Date().toISOString(),
@@ -2061,7 +2096,9 @@ export async function fetchWalletTransactions(
   return {
     transactions: rows
       .map(normalizePlatformTransaction)
-      .filter((t: PlatformTransaction | null): t is PlatformTransaction => t !== null),
+      .filter(
+        (t: PlatformTransaction | null): t is PlatformTransaction => t !== null,
+      ),
     has_more: payload.has_more ?? payload.hasMore ?? false,
     next_cursor: payload.next_cursor ?? payload.nextCursor ?? null,
   };
@@ -2414,11 +2451,16 @@ export async function updateFeeSchedule(
     body: JSON.stringify({ changes }),
   });
   if (res.status === 403) throw new ApiForbiddenError();
-  if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to update fee schedule"));
+  if (!res.ok)
+    throw new Error(
+      await readErrorMessage(res, "Failed to update fee schedule"),
+    );
   return res.json();
 }
 
-export async function fetchFeeChangeHistory(token?: string): Promise<FeeChangeLogEntry[]> {
+export async function fetchFeeChangeHistory(
+  token?: string,
+): Promise<FeeChangeLogEntry[]> {
   const res = await fetch(`${API_BASE}/admin/fees/history`, {
     headers: authHeaders(token),
   });
@@ -2439,7 +2481,10 @@ export async function fetchPublicFeeHistory(): Promise<FeeChangeLogEntry[]> {
 
 /* ─── Invoice risk, benchmarks, reports, and contract registry ─────────── */
 
-export type InvoiceRiskType = "funding_risk" | "late_payment" | "default_proximity";
+export type InvoiceRiskType =
+  | "funding_risk"
+  | "late_payment"
+  | "default_proximity";
 export type InvoiceRiskSeverity = "low" | "medium" | "high";
 
 export interface InvoiceRiskStatus {
@@ -2450,8 +2495,12 @@ export interface InvoiceRiskStatus {
   resolved_at?: string | null;
 }
 
-export async function fetchInvoiceRiskStatus(invoiceId: string): Promise<InvoiceRiskStatus> {
-  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/risk-status`);
+export async function fetchInvoiceRiskStatus(
+  invoiceId: string,
+): Promise<InvoiceRiskStatus> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/risk-status`,
+  );
   if (!res.ok) throw new Error("Failed to fetch invoice risk status");
   return res.json();
 }
@@ -2466,8 +2515,12 @@ export interface InvoiceBenchmark {
   sector_default_rate: number;
 }
 
-export async function fetchInvoiceBenchmark(invoiceId: string): Promise<InvoiceBenchmark> {
-  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/benchmark`);
+export async function fetchInvoiceBenchmark(
+  invoiceId: string,
+): Promise<InvoiceBenchmark> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/benchmark`,
+  );
   if (!res.ok) throw new Error("Failed to fetch invoice benchmark");
   return res.json();
 }
@@ -2495,17 +2548,21 @@ export interface InvoiceNav {
  * returns `null` so the chip and the invest panel simply stay hidden instead
  * of surfacing a failure for every unpriced invoice.
  */
-export async function fetchInvoiceNav(invoiceId: string): Promise<InvoiceNav | null> {
-  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/nav`);
+export async function fetchInvoiceNav(
+  invoiceId: string,
+): Promise<InvoiceNav | null> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/nav`,
+  );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error("Failed to fetch invoice NAV");
   return normalizeInvoiceNav(await res.json(), invoiceId);
 }
 
 export const INVOICE_REPORT_REASONS = [
-  "misrepresentation",
-  "false_documents",
-  "non_delivery",
+  "forged_invoice",
+  "duplicate_listing",
+  "issuer_misrepresentation",
   "other",
 ] as const;
 export type InvoiceReportReason = (typeof INVOICE_REPORT_REASONS)[number];
@@ -2532,13 +2589,44 @@ export async function submitInvoiceReport(
   input: { reason: InvoiceReportReason; evidence_hash: string; wallet: string },
   token?: string,
 ): Promise<{ report_id: string; transaction_hash?: string }> {
-  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/reports`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders(token) },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to submit invoice report"));
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/reports`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
+      body: JSON.stringify(input),
+    },
+  );
+  if (!res.ok)
+    throw new Error(
+      await readErrorMessage(res, "Failed to submit invoice report"),
+    );
   return res.json();
+}
+
+export interface InvoiceReport {
+  report_id: string;
+  invoice_id: string;
+  reason: InvoiceReportReason;
+  status: "pending" | "approved" | "rejected" | "needs_more_info";
+  created_at: string;
+  updated_at: string;
+  description?: string;
+}
+
+export interface MyReportsResponse {
+  reports: InvoiceReport[];
+}
+
+export async function fetchMyInvoiceReports(
+  token?: string,
+): Promise<InvoiceReport[]> {
+  const res = await fetch(`${API_BASE}/my-reports`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch my reports");
+  const data: MyReportsResponse = await res.json();
+  return data.reports;
 }
 
 export interface ContractVersion {
@@ -2562,8 +2650,12 @@ export interface ContractRegistryResponse {
   recent_upgrades: ContractUpgrade[];
 }
 
-export async function fetchContractRegistry(token?: string): Promise<ContractRegistryResponse> {
-  const res = await fetch(`${API_BASE}/admin/contracts`, { headers: authHeaders(token) });
+export async function fetchContractRegistry(
+  token?: string,
+): Promise<ContractRegistryResponse> {
+  const res = await fetch(`${API_BASE}/admin/contracts`, {
+    headers: authHeaders(token),
+  });
   if (res.status === 403) throw new ApiForbiddenError();
   if (!res.ok) throw new Error("Failed to fetch contract registry");
   return res.json();
@@ -2591,13 +2683,20 @@ export interface TwoFactorSetup {
   otpauth_url: string;
 }
 
-async function readAccountError(res: Response, fallback: string): Promise<never> {
+async function readAccountError(
+  res: Response,
+  fallback: string,
+): Promise<never> {
   if (res.status === 403) throw new ApiForbiddenError("Not allowed");
   throw new Error(await readErrorMessage(res, fallback));
 }
 
-export async function fetchAccountProfile(token?: string): Promise<AccountProfile> {
-  const res = await fetch(`${API_BASE}/users/me`, { headers: authHeaders(token) });
+export async function fetchAccountProfile(
+  token?: string,
+): Promise<AccountProfile> {
+  const res = await fetch(`${API_BASE}/users/me`, {
+    headers: authHeaders(token),
+  });
   if (!res.ok) return readAccountError(res, "Failed to load profile");
   return res.json();
 }
@@ -2615,21 +2714,33 @@ export async function updateAccountProfile(
   return res.json();
 }
 
-export async function fetchAccountSessions(token?: string): Promise<AccountSession[]> {
-  const res = await fetch(`${API_BASE}/users/me/sessions`, { headers: authHeaders(token) });
+export async function fetchAccountSessions(
+  token?: string,
+): Promise<AccountSession[]> {
+  const res = await fetch(`${API_BASE}/users/me/sessions`, {
+    headers: authHeaders(token),
+  });
   if (!res.ok) return readAccountError(res, "Failed to load sessions");
   return res.json();
 }
 
-export async function revokeAccountSession(sessionId: string, token?: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/users/me/sessions/${encodeURIComponent(sessionId)}`, {
-    method: "DELETE",
-    headers: authHeaders(token),
-  });
+export async function revokeAccountSession(
+  sessionId: string,
+  token?: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/users/me/sessions/${encodeURIComponent(sessionId)}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+    },
+  );
   if (!res.ok) return readAccountError(res, "Failed to revoke session");
 }
 
-export async function startTwoFactorSetup(token?: string): Promise<TwoFactorSetup> {
+export async function startTwoFactorSetup(
+  token?: string,
+): Promise<TwoFactorSetup> {
   const res = await fetch(`${API_BASE}/users/me/2fa/setup`, {
     method: "POST",
     headers: authHeaders(token),
@@ -2638,7 +2749,10 @@ export async function startTwoFactorSetup(token?: string): Promise<TwoFactorSetu
   return res.json();
 }
 
-export async function confirmTwoFactorSetup(code: string, token?: string): Promise<void> {
+export async function confirmTwoFactorSetup(
+  code: string,
+  token?: string,
+): Promise<void> {
   const res = await fetch(`${API_BASE}/users/me/2fa/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders(token) },
@@ -2664,8 +2778,12 @@ export interface IssuerReputation {
   history: IssuerReputationEvent[];
 }
 
-export async function fetchIssuerReputation(wallet: string): Promise<IssuerReputation> {
-  const res = await fetch(`${API_BASE}/issuers/${encodeURIComponent(wallet)}/reputation`);
+export async function fetchIssuerReputation(
+  wallet: string,
+): Promise<IssuerReputation> {
+  const res = await fetch(
+    `${API_BASE}/issuers/${encodeURIComponent(wallet)}/reputation`,
+  );
   if (res.status === 404) return { wallet, score: null, history: [] };
   if (!res.ok) throw new Error("Failed to fetch issuer reputation");
   const raw = await res.json();
@@ -2687,7 +2805,9 @@ export interface PendingTimelockChange {
   eta: string;
 }
 
-export async function fetchPendingTimelockChanges(): Promise<PendingTimelockChange[]> {
+export async function fetchPendingTimelockChanges(): Promise<
+  PendingTimelockChange[]
+> {
   const res = await fetch(`${API_BASE}/governance/timelock/pending`);
   if (!res.ok) throw new Error("Failed to fetch pending timelock changes");
   const payload = await res.json();
@@ -2721,7 +2841,8 @@ export async function fetchTransferRestriction(
   );
   if (!res.ok) throw new Error("Failed to check transfer restrictions");
   const raw = await res.json();
-  const restriction = (raw.restriction ?? null) as TransferRestrictionType | null;
+  const restriction = (raw.restriction ??
+    null) as TransferRestrictionType | null;
   return { allowed: raw.allowed !== false && !restriction, restriction };
 }
 /* ─── Auto-invest (#476) ───────────────────────────────────────────────────
@@ -3058,11 +3179,14 @@ export async function investInPool(
   amount: number,
   wallet: string,
 ): Promise<InvestPoolResult> {
-  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(poolId)}/invest`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ method: "invest_pool", amount, wallet }),
-  });
+  const res = await fetch(
+    `${API_BASE}/pools/${encodeURIComponent(poolId)}/invest`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "invest_pool", amount, wallet }),
+    },
+  );
   if (!res.ok) throw new Error("Pool investment failed");
   return res.json();
 }
@@ -3110,11 +3234,14 @@ export async function createPoolSubscription(
   input: CreatePoolSubscriptionInput,
   wallet: string,
 ): Promise<{ success: boolean; tx_hash?: string }> {
-  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ method: "create_subscription", wallet, ...input }),
-  });
+  const res = await fetch(
+    `${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "create_subscription", wallet, ...input }),
+    },
+  );
   if (!res.ok) throw new Error("Failed to start pool subscription");
   return res.json();
 }
@@ -3123,11 +3250,14 @@ export async function cancelPoolSubscription(
   poolId: string,
   wallet: string,
 ): Promise<{ success: boolean; tx_hash?: string }> {
-  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ method: "cancel_subscription", wallet }),
-  });
+  const res = await fetch(
+    `${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "cancel_subscription", wallet }),
+    },
+  );
   if (!res.ok) throw new Error("Failed to cancel pool subscription");
   return res.json();
 }
@@ -3158,7 +3288,9 @@ export interface InvestorLoyalty {
   promoted_at?: string | null;
 }
 
-export async function fetchInvestorLoyalty(wallet: string): Promise<InvestorLoyalty> {
+export async function fetchInvestorLoyalty(
+  wallet: string,
+): Promise<InvestorLoyalty> {
   const res = await fetch(
     `${API_BASE}/investors/${encodeURIComponent(wallet)}/loyalty`,
   );
@@ -3189,7 +3321,9 @@ export interface ReferralTierStatus {
   tiers: ReferralTierDefinition[];
 }
 
-export async function fetchReferralTier(wallet: string): Promise<ReferralTierStatus> {
+export async function fetchReferralTier(
+  wallet: string,
+): Promise<ReferralTierStatus> {
   const res = await fetch(
     `${API_BASE}/referrals/${encodeURIComponent(wallet)}/tier`,
   );
@@ -3219,9 +3353,12 @@ export async function fetchInvoiceOrderBook(
   invoiceId: string,
   signal?: AbortSignal,
 ): Promise<InvoiceOrderBook> {
-  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/orderbook`, {
-    signal,
-  });
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/orderbook`,
+    {
+      signal,
+    },
+  );
   if (!res.ok) throw new Error("Failed to fetch order book");
   return res.json();
 }
@@ -3259,15 +3396,21 @@ export interface AdminUserRowExtended extends AdminUserRow {
 
 export async function buyFraction(
   input: BuyFractionInput,
-  token?: string
+  token?: string,
 ): Promise<BuyFractionResult> {
-  const res = await fetch(`${API_BASE}/marketplace/listings/${input.listingId}/buy`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders(token) },
-    body: JSON.stringify({ quantity: input.quantity }),
-  });
+  const res = await fetch(
+    `${API_BASE}/marketplace/listings/${input.listingId}/buy`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
+      body: JSON.stringify({ quantity: input.quantity }),
+    },
+  );
   if (!res.ok) {
-    const message = await readConflictErrorMessage(res, "Failed to buy fraction");
+    const message = await readConflictErrorMessage(
+      res,
+      "Failed to buy fraction",
+    );
     throw new Error(message);
   }
   return res.json();
@@ -3282,7 +3425,7 @@ export interface BuyFractionInput {
 export async function cancelLimitOrder(orderId: string): Promise<void> {
   const res = await fetch(
     `${API_BASE}/marketplace/limit-orders/${encodeURIComponent(orderId)}/cancel`,
-    { method: "POST" }
+    { method: "POST" },
   );
   if (!res.ok) {
     const msg = await readErrorMessage(res, "Failed to cancel limit order");
@@ -3298,14 +3441,19 @@ export async function claimAllDividends(): Promise<InvestorDividendsResponse> {
   if (!res.ok) throw new Error("Failed to claim dividends");
   const payload = await res.json();
   // Backend may return the refreshed summary or just success.
-  if (payload && (payload.claimable || payload.claimsByCycle || payload.total_earned !== undefined)) {
+  if (
+    payload &&
+    (payload.claimable ||
+      payload.claimsByCycle ||
+      payload.total_earned !== undefined)
+  ) {
     return normalizeInvestorDividends(payload);
   }
   return fetchInvestorDividends();
 }
 
 export async function claimAllYieldTranches(
-  walletAddress: string
+  walletAddress: string,
 ): Promise<ClaimTrancheResult> {
   const res = await fetch(`${API_BASE}/investor/yield-vesting/claim-all`, {
     method: "POST",
@@ -3320,23 +3468,25 @@ export async function claimAllYieldTranches(
 }
 
 export async function claimDividendCycle(
-  cycleId: string
+  cycleId: string,
 ): Promise<{ success: boolean; transaction_hash?: string }> {
   const res = await fetch(
     `${API_BASE}/investor/dividends/${encodeURIComponent(cycleId)}/claim`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-    }
+    },
   );
   if (!res.ok) throw new Error("Failed to claim dividend");
   return res.json();
 }
 
-export async function claimYieldTranche(trancheId: string): Promise<ClaimTrancheResult> {
+export async function claimYieldTranche(
+  trancheId: string,
+): Promise<ClaimTrancheResult> {
   const res = await fetch(
     `${API_BASE}/investor/yield-vesting/${encodeURIComponent(trancheId)}/claim`,
-    { method: "POST" }
+    { method: "POST" },
   );
   if (!res.ok) {
     const msg = await readErrorMessage(res, "Failed to claim tranche");
@@ -3358,7 +3508,7 @@ export interface DefaultResolution {
 
 export async function deleteDraftInvoice(
   id: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/invoices/${id}`, {
     method: "DELETE",
@@ -3390,22 +3540,22 @@ export interface FeeTierInfo {
 
 export async function fetchAccreditationStatus(
   walletAddress: string,
-  token?: string
+  token?: string,
 ): Promise<AccreditationStatus> {
   const res = await fetch(
     `${API_BASE}/investors/${encodeURIComponent(walletAddress)}/accreditation`,
-    { headers: authHeaders(token) }
+    { headers: authHeaders(token) },
   );
   if (!res.ok) throw new Error("Failed to fetch accreditation status");
   return normalizeAccreditationStatus(await res.json(), walletAddress);
 }
 
 export async function fetchActiveLimitOrders(
-  walletAddress: string
+  walletAddress: string,
 ): Promise<LimitOrder[]> {
   const url = new URL(
     `${API_BASE}/marketplace/limit-orders`,
-    typeof window !== "undefined" ? window.location.href : "http://localhost"
+    typeof window !== "undefined" ? window.location.href : "http://localhost",
   );
   url.searchParams.set("address", walletAddress);
   url.searchParams.set("status", "open");
@@ -3418,7 +3568,7 @@ export async function fetchActiveLimitOrders(
 export async function fetchAdminUsers(
   search = "",
   cursor?: string,
-  token?: string
+  token?: string,
 ): Promise<AdminUsersResponse> {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
@@ -3435,29 +3585,33 @@ export async function fetchAdminUsers(
 
 export async function fetchCreatorProfile(
   wallet: string,
-  cursor?: string
+  cursor?: string,
 ): Promise<CreatorProfileResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
 
   const res = await fetch(`${API_BASE}/creators/${wallet}?${params}`);
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res, "Failed to fetch creator profile"));
+    throw new Error(
+      await readErrorMessage(res, "Failed to fetch creator profile"),
+    );
   }
   return normalizeCreatorProfile(await res.json());
 }
 
 export async function fetchDefaultResolution(
-  invoiceId: string
+  invoiceId: string,
 ): Promise<DefaultResolution> {
   const res = await fetch(
-    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/default-resolution`
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/default-resolution`,
   );
   if (!res.ok) throw new Error("Failed to fetch default resolution");
   return res.json();
 }
 
-export async function fetchEmailNotificationPreferences(): Promise<EmailNotificationPreference[]> {
+export async function fetchEmailNotificationPreferences(): Promise<
+  EmailNotificationPreference[]
+> {
   const res = await fetch(`${API_BASE}/notifications/preferences/email`);
   if (!res.ok) throw new Error("Failed to fetch notification preferences");
   return res.json();
@@ -3476,30 +3630,30 @@ export async function fetchInvestorDividends(): Promise<InvestorDividendsRespons
 }
 
 export async function fetchInvestorReputation(
-  wallet: string
+  wallet: string,
 ): Promise<InvestorReputation> {
   const res = await fetch(
-    `${API_BASE}/investors/${encodeURIComponent(wallet)}/reputation`
+    `${API_BASE}/investors/${encodeURIComponent(wallet)}/reputation`,
   );
   if (!res.ok) throw new Error("Failed to fetch investor reputation");
   return normalizeInvestorReputation(await res.json(), wallet);
 }
 
 export async function fetchInvoiceDemandMetrics(
-  invoiceId: string
+  invoiceId: string,
 ): Promise<InvoiceDemandMetrics> {
   const res = await fetch(
-    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/demand-metrics`
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/demand-metrics`,
   );
   if (!res.ok) throw new Error("Failed to fetch demand metrics");
   return normalizeInvoiceDemandMetrics(await res.json(), invoiceId);
 }
 
 export async function fetchInvoiceFundingProgress(
-  invoiceId: string
+  invoiceId: string,
 ): Promise<InvoiceFundingProgress> {
   const res = await fetch(
-    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/funding-progress`
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/funding-progress`,
   );
   if (!res.ok) throw new Error("Failed to fetch funding progress");
   return normalizeInvoiceFundingProgress(await res.json(), invoiceId);
@@ -3508,11 +3662,11 @@ export async function fetchInvoiceFundingProgress(
 export async function fetchInvoicePriceHistory(
   invoiceId: string,
   range: PriceHistoryRangeParam = "all",
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<InvoicePriceHistory> {
   const res = await fetch(
     `${API_BASE}/marketplace/invoices/${invoiceId}/price-history?range=${range}`,
-    { signal }
+    { signal },
   );
   if (!res.ok) throw new Error("Failed to fetch invoice price history");
 
@@ -3521,10 +3675,10 @@ export async function fetchInvoicePriceHistory(
 }
 
 export async function fetchInvoiceProtection(
-  invoiceId: string
+  invoiceId: string,
 ): Promise<InvoiceProtectionInfo> {
   const res = await fetch(
-    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/protection`
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/protection`,
   );
   if (!res.ok) throw new Error("Failed to fetch sell tax info");
   return normalizeProtectionInfo(await res.json(), invoiceId);
@@ -3532,11 +3686,13 @@ export async function fetchInvoiceProtection(
 
 export async function fetchInvoiceRating(
   invoiceId: string,
-  walletAddress?: string | null
+  walletAddress?: string | null,
 ): Promise<InvoiceRatingSummary> {
-  const query = walletAddress ? `?wallet=${encodeURIComponent(walletAddress)}` : "";
+  const query = walletAddress
+    ? `?wallet=${encodeURIComponent(walletAddress)}`
+    : "";
   const res = await fetch(
-    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/rating${query}`
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/rating${query}`,
   );
   if (!res.ok) throw new Error("Failed to fetch invoice rating");
   return normalizeInvoiceRating(await res.json(), invoiceId);
@@ -3544,7 +3700,7 @@ export async function fetchInvoiceRating(
 
 export async function fetchIssuerEarnings(
   cursor?: string,
-  token?: string
+  token?: string,
 ): Promise<IssuerEarningsResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
@@ -3564,14 +3720,17 @@ export async function fetchIssuerEarnings(
 export async function fetchKycHistory(
   wallet: string,
   cursor?: string,
-  token?: string
+  token?: string,
 ): Promise<KycHistoryResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
 
-  const res = await fetch(`${API_BASE}/admin/users/${wallet}/kyc/history?${params}`, {
-    headers: authHeaders(token),
-  });
+  const res = await fetch(
+    `${API_BASE}/admin/users/${wallet}/kyc/history?${params}`,
+    {
+      headers: authHeaders(token),
+    },
+  );
   if (!res.ok) {
     throw new Error(await readErrorMessage(res, "Failed to fetch KYC history"));
   }
@@ -3582,18 +3741,20 @@ export async function fetchLeaderboard(): Promise<LeaderboardInvestor[]> {
   const res = await fetch(`${API_BASE}/leaderboard`);
   if (!res.ok) throw new Error("Failed to fetch leaderboard");
   const payload = await res.json();
-  const list = Array.isArray(payload) ? payload : payload.investors ?? [];
+  const list = Array.isArray(payload) ? payload : (payload.investors ?? []);
   return list.map(normalizeLeaderboardInvestor);
 }
 
-export async function fetchNotificationPreferences(): Promise<NotificationPreference[]> {
+export async function fetchNotificationPreferences(): Promise<
+  NotificationPreference[]
+> {
   const res = await fetch(`${API_BASE}/notifications/preferences`);
   if (!res.ok) throw new Error("Failed to fetch notification preferences");
   return res.json();
 }
 
 export async function fetchPlatformActivity(
-  limit = 20
+  limit = 20,
 ): Promise<PlatformActivityEvent[]> {
   const params = new URLSearchParams({ limit: String(limit) });
   const res = await fetch(`${API_BASE}/activity?${params}`);
@@ -3601,21 +3762,19 @@ export async function fetchPlatformActivity(
   const payload = await res.json();
   const events = Array.isArray(payload)
     ? payload
-    : payload.events ?? payload.activity ?? [];
-  return events
-    .map(normalizePlatformActivityEvent)
-    .slice(0, limit);
+    : (payload.events ?? payload.activity ?? []);
+  return events.map(normalizePlatformActivityEvent).slice(0, limit);
 }
 
 export async function fetchResaleListings(
   filters: ResaleListingFilters = {},
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<ResaleListingsResponse> {
   const params = buildResaleListingParams(filters);
   const query = params.toString();
   const res = await fetch(
     `${API_BASE}/marketplace/listings${query ? `?${query}` : ""}`,
-    { signal }
+    { signal },
   );
   if (!res.ok) throw new Error("Failed to fetch resale listings");
 
@@ -3634,10 +3793,10 @@ export async function fetchResaleListings(
 }
 
 export async function fetchYieldVesting(
-  walletAddress: string
+  walletAddress: string,
 ): Promise<InvoiceYieldVesting[]> {
   const res = await fetch(
-    `${API_BASE}/investor/yield-vesting?address=${encodeURIComponent(walletAddress)}`
+    `${API_BASE}/investor/yield-vesting?address=${encodeURIComponent(walletAddress)}`,
   );
   if (!res.ok) throw new Error("Failed to fetch yield vesting");
   const json = await res.json();
@@ -3647,7 +3806,7 @@ export async function fetchYieldVesting(
 export async function flagUser(
   wallet: string,
   reason: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/admin/users/${wallet}/flag`, {
     method: "POST",
@@ -3736,7 +3895,7 @@ export interface InvoiceYieldVesting {
 export function isAccreditedForInvoice(
   tier: AccreditationTier,
   faceValue: number,
-  threshold: number
+  threshold: number,
 ): boolean {
   if (faceValue < threshold) return true;
   return tier === "accredited" || tier === "qualified";
@@ -3772,7 +3931,7 @@ export interface LimitOrder {
 }
 
 export function normalizeAdminUsersExtendedResponse(
-  raw: any
+  raw: any,
 ): AdminUsersExtendedResponse {
   const list = Array.isArray(raw) ? raw : (raw?.users ?? []);
   return {
@@ -3804,7 +3963,7 @@ export interface NotificationPreference {
 }
 
 export async function placeLimitOrder(
-  input: PlaceLimitOrderInput
+  input: PlaceLimitOrderInput,
 ): Promise<PlaceLimitOrderResult> {
   const res = await fetch(`${API_BASE}/marketplace/limit-orders`, {
     method: "POST",
@@ -3857,7 +4016,7 @@ export interface ResaleListingFilters {
 }
 
 export async function saveEmailNotificationPreferences(
-  preferences: EmailNotificationPreference[]
+  preferences: EmailNotificationPreference[],
 ): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/notifications/preferences/email`, {
     method: "PUT",
@@ -3869,7 +4028,7 @@ export async function saveEmailNotificationPreferences(
 }
 
 export function sortNotificationsByRecency(
-  notifications: NotificationItem[]
+  notifications: NotificationItem[],
 ): NotificationItem[] {
   return [...notifications].sort((a, b) => {
     const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -3883,7 +4042,7 @@ export function sortNotificationsByRecency(
 
 export async function submitDraftInvoice(
   id: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/invoices/${id}/submit`, {
     method: "POST",
@@ -3897,7 +4056,7 @@ export async function submitInvoiceRating(
   invoiceId: string,
   rating: number,
   walletAddress?: string,
-  token?: string
+  token?: string,
 ): Promise<InvoiceRatingSummary> {
   const res = await fetch(
     `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/rating`,
@@ -3905,7 +4064,7 @@ export async function submitInvoiceRating(
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders(token) },
       body: JSON.stringify({ rating, wallet: walletAddress }),
-    }
+    },
   );
   if (!res.ok) throw new Error("Failed to submit rating");
   return normalizeInvoiceRating(await res.json(), invoiceId);
@@ -3913,7 +4072,7 @@ export async function submitInvoiceRating(
 
 export async function suspendAdminUser(
   wallet: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/admin/users/${wallet}/suspend`, {
     method: "POST",
@@ -3930,7 +4089,7 @@ export async function transferInvoiceFractions(
   recipient: string,
   quantity: number,
   walletAddress: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean; transaction_hash: string }> {
   const res = await fetch(
     `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/transfer-fractions`,
@@ -3945,7 +4104,7 @@ export async function transferInvoiceFractions(
         quantity,
         wallet: walletAddress,
       }),
-    }
+    },
   );
   if (!res.ok) throw new Error("Failed to transfer invoice fractions");
   return res.json();
@@ -3956,27 +4115,30 @@ export async function transferInvoicePosition(
   buyer: string,
   salePriceXlm: number,
   walletAddress: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean }> {
-  const res = await fetch(`${API_BASE}/invoices/${invoiceId}/transfer-position`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(token),
+  const res = await fetch(
+    `${API_BASE}/invoices/${invoiceId}/transfer-position`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(token),
+      },
+      body: JSON.stringify({
+        buyer,
+        sale_price: salePriceXlm,
+        wallet: walletAddress,
+      }),
     },
-    body: JSON.stringify({
-      buyer,
-      sale_price: salePriceXlm,
-      wallet: walletAddress,
-    }),
-  });
+  );
   if (!res.ok) throw new Error("Failed to transfer position");
   return res.json();
 }
 
 export async function unflagUser(
   wallet: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/admin/users/${wallet}/unflag`, {
     method: "POST",
@@ -3990,7 +4152,7 @@ export async function unflagUser(
 
 export async function unsuspendAdminUser(
   wallet: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/admin/users/${wallet}/unsuspend`, {
     method: "POST",
@@ -4005,7 +4167,7 @@ export async function unsuspendAdminUser(
 export async function updateAdminUserRole(
   wallet: string,
   role: AdminUserRole,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/admin/users/${wallet}/role`, {
     method: "PATCH",
@@ -4022,7 +4184,7 @@ export async function updateUserKycStatus(
   wallet: string,
   status: KycStatus,
   reason?: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean }> {
   const res = await fetch(`${API_BASE}/admin/users/${wallet}/kyc`, {
     method: "PATCH",
@@ -4035,7 +4197,10 @@ export async function updateUserKycStatus(
   return res.json();
 }
 
-export async function uploadDocumentToIpfs(file: File, token?: string): Promise<IpfsUploadResult> {
+export async function uploadDocumentToIpfs(
+  file: File,
+  token?: string,
+): Promise<IpfsUploadResult> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await fetch(`${API_BASE}/ipfs/upload`, {
@@ -4049,7 +4214,7 @@ export async function uploadDocumentToIpfs(file: File, token?: string): Promise<
 
 export async function withdrawIssuerEarnings(
   invoiceId: string,
-  token?: string
+  token?: string,
 ): Promise<{ success: boolean; transaction_hash?: string }> {
   const res = await fetch(`${API_BASE}/issuer/earnings/${invoiceId}/withdraw`, {
     method: "POST",
@@ -4165,9 +4330,11 @@ export interface AdminUsersExtendedResponse {
 
 export function normalizeAdminUserRowExtended(raw: any): AdminUserRowExtended {
   const accreditation = String(
-    raw.accreditation_tier ?? raw.accreditationTier ?? "unaccredited"
+    raw.accreditation_tier ?? raw.accreditationTier ?? "unaccredited",
   ).toLowerCase();
-  const flagged = Boolean(raw.flagged ?? raw.is_flagged ?? raw.isFlagged ?? false);
+  const flagged = Boolean(
+    raw.flagged ?? raw.is_flagged ?? raw.isFlagged ?? false,
+  );
 
   return {
     wallet: String(raw.wallet ?? raw.address ?? ""),
@@ -4175,10 +4342,17 @@ export function normalizeAdminUserRowExtended(raw: any): AdminUserRowExtended {
     suspended: Boolean(raw.suspended ?? false),
     joined_at: String(raw.joined_at ?? raw.joinedAt ?? raw.created_at ?? ""),
     email: String(raw.email ?? ""),
-    kyc_status: flagged ? "flagged" : normalizeKycStatus(raw.kyc_status ?? raw.kycStatus),
+    kyc_status: flagged
+      ? "flagged"
+      : normalizeKycStatus(raw.kyc_status ?? raw.kycStatus),
     kyc_submitted_at:
-      raw.kyc_submitted_at ?? raw.kycSubmittedAt ?? raw.submitted_at ?? undefined,
-    accreditation_tier: (ADMIN_USER_ACCREDITATION_TIERS as string[]).includes(accreditation)
+      raw.kyc_submitted_at ??
+      raw.kycSubmittedAt ??
+      raw.submitted_at ??
+      undefined,
+    accreditation_tier: (ADMIN_USER_ACCREDITATION_TIERS as string[]).includes(
+      accreditation,
+    )
       ? (accreditation as AdminUserRowExtended["accreditation_tier"])
       : "unaccredited",
     flagged,
@@ -4248,11 +4422,16 @@ export interface KycHistoryEntry {
 
 /* ─── Restored internal helpers ─── */
 
-async function readConflictErrorMessage(res: Response, fallback: string): Promise<string> {
+async function readConflictErrorMessage(
+  res: Response,
+  fallback: string,
+): Promise<string> {
   try {
     const payload = await res.json();
     const message = payload?.message ?? payload?.error;
-    return typeof message === "string" && message.length > 0 ? message : fallback;
+    return typeof message === "string" && message.length > 0
+      ? message
+      : fallback;
   } catch {
     return fallback;
   }
@@ -4274,10 +4453,10 @@ function normalizeInvestorDividends(raw: any): InvestorDividendsResponse {
   const claimable = claimableRaw.map(normalizeDividendCycle);
   const history = historyRaw.map(normalizeDividendClaimRecord);
   const total_pending = Number(
-    raw.total_pending ?? raw.totalPending ?? raw.pendingClaims ?? 0
+    raw.total_pending ?? raw.totalPending ?? raw.pendingClaims ?? 0,
   );
   const total_earned = Number(
-    raw.total_earned ?? raw.totalEarned ?? raw.totalEarnedXlm ?? 0
+    raw.total_earned ?? raw.totalEarned ?? raw.totalEarnedXlm ?? 0,
   );
   // Aggregate fallback when backend only sends cycles.
   const pendingFallback = claimable
@@ -4287,18 +4466,27 @@ function normalizeInvestorDividends(raw: any): InvestorDividendsResponse {
     pendingFallback + history.reduce((sum, h) => sum + h.amount, 0);
   return {
     total_earned: total_earned || earnedFallback,
-    total_pending: raw.total_pending !== undefined ? total_pending : pendingFallback,
+    total_pending:
+      raw.total_pending !== undefined ? total_pending : pendingFallback,
     claimable,
     history,
   };
 }
 
-function normalizeAccreditationStatus(raw: any, wallet: string): AccreditationStatus {
+function normalizeAccreditationStatus(
+  raw: any,
+  wallet: string,
+): AccreditationStatus {
   return {
     wallet: raw.wallet ?? raw.address ?? wallet,
-    tier: normalizeAccreditationTier(raw.tier ?? raw.accreditation_tier ?? raw.accreditationTier),
+    tier: normalizeAccreditationTier(
+      raw.tier ?? raw.accreditation_tier ?? raw.accreditationTier,
+    ),
     high_value_threshold: Number(
-      raw.high_value_threshold ?? raw.highValueThreshold ?? raw.threshold ?? 100_000
+      raw.high_value_threshold ??
+        raw.highValueThreshold ??
+        raw.threshold ??
+        100_000,
     ),
     expires_at: raw.expires_at ?? raw.expiresAt ?? null,
   };
@@ -4327,15 +4515,13 @@ function normalizeFeeTierInfo(raw: any): FeeTierInfo {
     ? raw.tiers.map(normalizeFeeTierEntry)
     : FEE_TIERS;
   const fee_percentage = Number(
-    raw.fee_percentage ?? raw.feePercentage ?? raw.fee ?? 0
+    raw.fee_percentage ?? raw.feePercentage ?? raw.fee ?? 0,
   );
-  const tier_label = String(
-    raw.tier_label ?? raw.tierLabel ?? raw.tier ?? ""
+  const tier_label = String(raw.tier_label ?? raw.tierLabel ?? raw.tier ?? "");
+  const volume_24h = Number(raw.volume_24h ?? raw.volume24h ?? raw.volume ?? 0);
+  const lowestFee = Math.min(
+    ...tiers.map((t: FeeTierEntry) => t.fee_percentage),
   );
-  const volume_24h = Number(
-    raw.volume_24h ?? raw.volume24h ?? raw.volume ?? 0
-  );
-  const lowestFee = Math.min(...tiers.map((t: FeeTierEntry) => t.fee_percentage));
   return {
     fee_percentage,
     tier_label,
@@ -4348,9 +4534,12 @@ function normalizeFeeTierInfo(raw: any): FeeTierInfo {
   };
 }
 
-function normalizeInvestorReputation(raw: any, wallet: string): InvestorReputation {
+function normalizeInvestorReputation(
+  raw: any,
+  wallet: string,
+): InvestorReputation {
   const score = Number(
-    raw.score ?? raw.reputation_score ?? raw.reputationScore ?? 0
+    raw.score ?? raw.reputation_score ?? raw.reputationScore ?? 0,
   );
   const breakdown = raw.breakdown ?? raw;
   return {
@@ -4362,14 +4551,14 @@ function normalizeInvestorReputation(raw: any, wallet: string): InvestorReputati
         breakdown.investments_completed ??
         breakdown.investmentsCompleted ??
         raw.investmentsCompleted ??
-        0
+        0,
     ),
     governance_votes: Number(
       raw.governance_votes ??
         breakdown.governance_votes ??
         breakdown.governanceVotes ??
         raw.governanceVotes ??
-        0
+        0,
     ),
     platform_tenure_days: Number(
       raw.platform_tenure_days ??
@@ -4377,18 +4566,23 @@ function normalizeInvestorReputation(raw: any, wallet: string): InvestorReputati
         breakdown.platformTenureDays ??
         raw.platformTenureDays ??
         raw.tenure_days ??
-        0
+        0,
     ),
-    history: normalizeReputationHistory(raw.history ?? raw.score_history ?? raw),
+    history: normalizeReputationHistory(
+      raw.history ?? raw.score_history ?? raw,
+    ),
   };
 }
 
-function normalizeInvoiceDemandMetrics(raw: any, invoiceId: string): InvoiceDemandMetrics {
+function normalizeInvoiceDemandMetrics(
+  raw: any,
+  invoiceId: string,
+): InvoiceDemandMetrics {
   return {
     invoice_id: raw.invoice_id ?? raw.invoiceId ?? invoiceId,
     investor_count: Number(raw.investor_count ?? raw.investorCount ?? 0),
     raised_last_24h: Number(
-      raw.raised_last_24h ?? raw.raisedLast24h ?? raw.last_24h ?? 0
+      raw.raised_last_24h ?? raw.raisedLast24h ?? raw.last_24h ?? 0,
     ),
     raised: Number(raw.raised ?? raw.funded ?? 0),
     target: Number(raw.target ?? raw.amount ?? raw.face_value ?? 0),
@@ -4415,19 +4609,28 @@ function normalizeInvoiceNav(raw: any, invoiceId: string): InvoiceNav | null {
   if (!raw || typeof raw !== "object") return null;
 
   const nav = toFiniteNumberOrNull(
-    raw.nav_per_fraction ?? raw.navPerFraction ?? raw.nav ?? raw.fair_value ?? raw.fairValue
+    raw.nav_per_fraction ??
+      raw.navPerFraction ??
+      raw.nav ??
+      raw.fair_value ??
+      raw.fairValue,
   );
   const price = toFiniteNumberOrNull(
     raw.current_price ??
       raw.currentPrice ??
       raw.price ??
       raw.fraction_price ??
-      raw.fractionPrice
+      raw.fractionPrice,
   );
   if (nav === null && price === null) return null;
 
   const computedAt =
-    raw.computed_at ?? raw.computedAt ?? raw.as_of ?? raw.asOf ?? raw.updated_at ?? raw.updatedAt;
+    raw.computed_at ??
+    raw.computedAt ??
+    raw.as_of ??
+    raw.asOf ??
+    raw.updated_at ??
+    raw.updatedAt;
 
   return {
     invoice_id: raw.invoice_id ?? raw.invoiceId ?? invoiceId,
@@ -4437,7 +4640,10 @@ function normalizeInvoiceNav(raw: any, invoiceId: string): InvoiceNav | null {
   };
 }
 
-function normalizeInvoiceFundingProgress(raw: any, invoiceId: string): InvoiceFundingProgress {
+function normalizeInvoiceFundingProgress(
+  raw: any,
+  invoiceId: string,
+): InvoiceFundingProgress {
   const target = Number(raw.target ?? raw.amount ?? raw.face_value ?? 0);
   const raised = Number(raw.raised ?? raw.funded ?? raw.raised_amount ?? 0);
   return {
@@ -4452,49 +4658,66 @@ function normalizeInvoiceFundingProgress(raw: any, invoiceId: string): InvoiceFu
   };
 }
 
-function normalizeInvoicePriceHistory(raw: any, invoiceId: string): InvoicePriceHistory {
-  const list = Array.isArray(raw) ? raw : raw?.history ?? raw?.points ?? [];
+function normalizeInvoicePriceHistory(
+  raw: any,
+  invoiceId: string,
+): InvoicePriceHistory {
+  const list = Array.isArray(raw) ? raw : (raw?.history ?? raw?.points ?? []);
   const rawCurrent = raw?.current_ask_price ?? raw?.currentAskPrice;
   return {
     invoice_id: String(raw?.invoice_id ?? raw?.invoiceId ?? invoiceId),
     current_ask_price:
-      rawCurrent !== undefined && rawCurrent !== null ? Number(rawCurrent) : null,
-    history: (Array.isArray(list) ? list : []).map(normalizeInvoicePriceHistoryPoint),
+      rawCurrent !== undefined && rawCurrent !== null
+        ? Number(rawCurrent)
+        : null,
+    history: (Array.isArray(list) ? list : []).map(
+      normalizeInvoicePriceHistoryPoint,
+    ),
   };
 }
 
-function normalizeProtectionInfo(raw: any, invoiceId: string): InvoiceProtectionInfo {
+function normalizeProtectionInfo(
+  raw: any,
+  invoiceId: string,
+): InvoiceProtectionInfo {
   return {
     invoice_id: raw.invoice_id ?? raw.invoiceId ?? invoiceId,
     sell_tax_percentage: Number(
-      raw.sell_tax_percentage ?? raw.sellTaxPercentage ?? raw.sell_tax ?? 0
+      raw.sell_tax_percentage ?? raw.sellTaxPercentage ?? raw.sell_tax ?? 0,
     ),
     buyback_pool_balance: Number(
       raw.buyback_pool_balance ??
         raw.buybackPoolBalance ??
         raw.buyback_pool ??
-        0
+        0,
     ),
   };
 }
 
-function normalizeInvoiceRating(raw: any, invoiceId: string): InvoiceRatingSummary {
+function normalizeInvoiceRating(
+  raw: any,
+  invoiceId: string,
+): InvoiceRatingSummary {
   return {
     invoice_id: raw.invoice_id ?? raw.invoiceId ?? invoiceId,
-    average_rating: Number(raw.average_rating ?? raw.averageRating ?? raw.average ?? 0),
+    average_rating: Number(
+      raw.average_rating ?? raw.averageRating ?? raw.average ?? 0,
+    ),
     rating_count: Number(raw.rating_count ?? raw.ratingCount ?? raw.count ?? 0),
     user_rating:
       raw.user_rating !== undefined && raw.user_rating !== null
         ? Number(raw.user_rating)
-        : (raw.userRating !== undefined && raw.userRating !== null
+        : raw.userRating !== undefined && raw.userRating !== null
           ? Number(raw.userRating)
-          : null),
-    distribution: normalizeRatingDistribution(raw.distribution ?? raw.star_distribution),
+          : null,
+    distribution: normalizeRatingDistribution(
+      raw.distribution ?? raw.star_distribution,
+    ),
   };
 }
 
 function normalizeRatingDistribution(
-  raw: any
+  raw: any,
 ): Record<1 | 2 | 3 | 4 | 5, number> | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   return {
@@ -4531,7 +4754,11 @@ function normalizeIssuerInvoiceEarning(raw: any): IssuerInvoiceEarning {
 function normalizeLeaderboardInvestor(raw: any): LeaderboardInvestor {
   return {
     address:
-      raw.address ?? raw.wallet ?? raw.wallet_address ?? raw.walletAddress ?? "",
+      raw.address ??
+      raw.wallet ??
+      raw.wallet_address ??
+      raw.walletAddress ??
+      "",
     total_committed:
       raw.total_committed ?? raw.totalCommitted ?? raw.total ?? 0,
     invoice_count:
@@ -4543,23 +4770,21 @@ function normalizePlatformActivityEvent(raw: any): PlatformActivityEvent {
   return {
     id: String(raw.id ?? raw.event_id ?? raw.eventId ?? ""),
     type: normalizePlatformActivityType(
-      raw.type ?? raw.event_type ?? raw.eventType
+      raw.type ?? raw.event_type ?? raw.eventType,
     ),
-    invoice_id: String(
-      raw.invoice_id ?? raw.invoiceId ?? raw.invoice ?? ""
-    ),
+    invoice_id: String(raw.invoice_id ?? raw.invoiceId ?? raw.invoice ?? ""),
     title: String(raw.title ?? raw.invoice_title ?? raw.description ?? ""),
     amount:
       raw.amount !== undefined && raw.amount !== null
         ? Number(raw.amount)
         : undefined,
-    created_at: String(
-      raw.created_at ?? raw.createdAt ?? raw.timestamp ?? ""
-    ),
+    created_at: String(raw.created_at ?? raw.createdAt ?? raw.timestamp ?? ""),
   };
 }
 
-function buildResaleListingParams(filters: ResaleListingFilters = {}): URLSearchParams {
+function buildResaleListingParams(
+  filters: ResaleListingFilters = {},
+): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.invoiceType && filters.invoiceType !== "all") {
     params.set("invoice_type", filters.invoiceType);
@@ -4576,55 +4801,71 @@ function buildResaleListingParams(filters: ResaleListingFilters = {}): URLSearch
   if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
     params.set("max_price", String(filters.maxPrice));
   }
-  if (filters.maxDaysToMaturity !== undefined && filters.maxDaysToMaturity > 0) {
+  if (
+    filters.maxDaysToMaturity !== undefined &&
+    filters.maxDaysToMaturity > 0
+  ) {
     params.set("max_days_to_maturity", String(filters.maxDaysToMaturity));
   }
   return params;
 }
 
 function normalizeResaleListing(raw: any): ResaleListing {
-  const quantity = Number(raw.quantity ?? raw.shares ?? raw.shares_offered ?? 0);
+  const quantity = Number(
+    raw.quantity ?? raw.shares ?? raw.shares_offered ?? 0,
+  );
   const remaining = Number(
-    raw.remaining_quantity ?? raw.remaining ?? raw.shares_remaining ?? quantity
+    raw.remaining_quantity ?? raw.remaining ?? raw.shares_remaining ?? quantity,
   );
 
   return {
     id: String(raw.id ?? raw.listing_id),
     invoice_id: String(raw.invoice_id ?? raw.invoiceId ?? ""),
-    invoice_title: String(raw.invoice_title ?? raw.invoiceTitle ?? raw.title ?? ""),
+    invoice_title: String(
+      raw.invoice_title ?? raw.invoiceTitle ?? raw.title ?? "",
+    ),
     invoice_type: String(raw.invoice_type ?? raw.invoiceType ?? "other"),
     seller: String(raw.seller ?? raw.seller_address ?? ""),
     quantity,
     remaining_quantity: remaining,
     ask_price: Number(raw.ask_price ?? raw.askPrice ?? raw.price ?? 0),
     maturity_value: Number(
-      raw.maturity_value ?? raw.maturityValue ?? raw.face_value ?? 0
+      raw.maturity_value ?? raw.maturityValue ?? raw.face_value ?? 0,
     ),
-    maturity_date: String(raw.maturity_date ?? raw.maturityDate ?? raw.due_date ?? ""),
+    maturity_date: String(
+      raw.maturity_date ?? raw.maturityDate ?? raw.due_date ?? "",
+    ),
     listed_at: String(raw.listed_at ?? raw.listedAt ?? raw.created_at ?? ""),
     status: (raw.status ?? "active") as ResaleListingStatus,
   };
 }
 
 function normalizeKycStatus(raw: any): KycStatus {
-  const v = String(raw ?? "").toLowerCase().replace(/[-\s]/g, "_");
+  const v = String(raw ?? "")
+    .toLowerCase()
+    .replace(/[-\s]/g, "_");
   if ((KYC_STATUSES as string[]).includes(v)) return v as KycStatus;
-  if (v === "notsubmitted" || v === "none" || v === "missing") return "not_submitted";
-  if (v === "in_review" || v === "inreview" || v === "under_review") return "flagged";
+  if (v === "notsubmitted" || v === "none" || v === "missing")
+    return "not_submitted";
+  if (v === "in_review" || v === "inreview" || v === "under_review")
+    return "flagged";
   return "not_submitted";
 }
 
-const ADMIN_USER_ACCREDITATION_TIERS: AdminUserRowExtended["accreditation_tier"][] = [
-  "unaccredited",
-  "accredited",
-  "qualified",
-];
+const ADMIN_USER_ACCREDITATION_TIERS: AdminUserRowExtended["accreditation_tier"][] =
+  ["unaccredited", "accredited", "qualified"];
 
 function normalizeDividendCycle(raw: any): DividendCycle {
-  const cycle = String(raw.cycle ?? raw.cycle_id ?? raw.cycleId ?? raw.id ?? "");
+  const cycle = String(
+    raw.cycle ?? raw.cycle_id ?? raw.cycleId ?? raw.id ?? "",
+  );
   const amount = Number(raw.amount ?? raw.claimable_amount ?? 0);
   const distribution_date = String(
-    raw.distribution_date ?? raw.distributionDate ?? raw.date ?? raw.created_at ?? ""
+    raw.distribution_date ??
+      raw.distributionDate ??
+      raw.date ??
+      raw.created_at ??
+      "",
   );
   const claimed = Boolean(raw.claimed ?? false);
   return {
@@ -4643,13 +4884,16 @@ function normalizeDividendClaimRecord(raw: any): DividendClaimRecord {
     cycle: String(raw.cycle ?? raw.cycle_id ?? ""),
     amount: Number(raw.amount ?? 0),
     claimed_at: String(raw.claimed_at ?? raw.claimedAt ?? raw.date ?? ""),
-    transaction_hash: String(raw.transaction_hash ?? raw.transactionHash ?? raw.tx_hash ?? ""),
+    transaction_hash: String(
+      raw.transaction_hash ?? raw.transactionHash ?? raw.tx_hash ?? "",
+    ),
   };
 }
 
 function normalizeAccreditationTier(raw: any): AccreditationTier {
   const v = String(raw ?? "").toLowerCase();
-  if ((ACCREDITATION_TIERS as string[]).includes(v)) return v as AccreditationTier;
+  if ((ACCREDITATION_TIERS as string[]).includes(v))
+    return v as AccreditationTier;
   if (v === "none" || v === "basic") return "unaccredited";
   if (v === "standard" || v === "verified") return "accredited";
   if (v === "institutional" || v === "sophisticated") return "qualified";
@@ -4661,7 +4905,7 @@ function normalizeFeeTierEntry(raw: any): FeeTierEntry {
     tier: String(raw.tier ?? raw.label ?? raw.name ?? ""),
     min_volume: Number(raw.min_volume ?? raw.minVolume ?? raw.threshold ?? 0),
     fee_percentage: Number(
-      raw.fee_percentage ?? raw.feePercentage ?? raw.fee ?? 0
+      raw.fee_percentage ?? raw.feePercentage ?? raw.fee ?? 0,
     ),
   };
 }
@@ -4674,7 +4918,7 @@ export const FEE_TIERS: FeeTierEntry[] = [
 ];
 
 function normalizeReputationHistory(raw: any): ReputationScoreHistoryPoint[] {
-  const list = Array.isArray(raw) ? raw : raw?.history ?? raw?.points ?? [];
+  const list = Array.isArray(raw) ? raw : (raw?.history ?? raw?.points ?? []);
   return (Array.isArray(list) ? list : []).map((p: any) => ({
     date: String(p.date ?? p.timestamp ?? p.created_at ?? ""),
     score: Number(p.score ?? p.value ?? 0),
@@ -4683,7 +4927,9 @@ function normalizeReputationHistory(raw: any): ReputationScoreHistoryPoint[] {
 
 function normalizeInvoicePriceHistoryPoint(raw: any): InvoicePriceHistoryPoint {
   return {
-    date: String(raw.date ?? raw.timestamp ?? raw.listed_at ?? raw.created_at ?? ""),
+    date: String(
+      raw.date ?? raw.timestamp ?? raw.listed_at ?? raw.created_at ?? "",
+    ),
     price: Number(raw.price ?? raw.ask_price ?? raw.askPrice ?? 0),
     quantity: Number(raw.quantity ?? raw.qty ?? 0),
   };
@@ -4742,10 +4988,10 @@ export interface ExtensionProposal {
 }
 
 export async function fetchExtensionProposal(
-  invoiceId: string
+  invoiceId: string,
 ): Promise<ExtensionProposal | null> {
   const res = await fetch(
-    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/extension-proposal`
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/extension-proposal`,
   );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error("Failed to fetch extension proposal");
@@ -4755,7 +5001,7 @@ export async function fetchExtensionProposal(
 export async function proposeExtension(
   invoiceId: string,
   body: { proposed_maturity_date: string; reason: string },
-  token?: string
+  token?: string,
 ): Promise<ExtensionProposal> {
   const res = await fetch(
     `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/extension-proposal`,
@@ -4763,16 +5009,17 @@ export async function proposeExtension(
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders(token) },
       body: JSON.stringify(body),
-    }
+    },
   );
-  if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to propose extension"));
+  if (!res.ok)
+    throw new Error(await readErrorMessage(res, "Failed to propose extension"));
   return res.json();
 }
 
 export async function voteOnExtension(
   proposalId: string,
   body: { wallet: string; support: boolean },
-  token?: string
+  token?: string,
 ): Promise<ExtensionProposal> {
   const res = await fetch(
     `${API_BASE}/extension-proposals/${encodeURIComponent(proposalId)}/votes`,
@@ -4780,9 +5027,10 @@ export async function voteOnExtension(
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders(token) },
       body: JSON.stringify(body),
-    }
+    },
   );
-  if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to submit vote"));
+  if (!res.ok)
+    throw new Error(await readErrorMessage(res, "Failed to submit vote"));
   return res.json();
 }
 
@@ -4796,9 +5044,14 @@ export interface IssuerBlacklistStatus {
   blacklisted_at: string | null;
 }
 
-export async function fetchIssuerBlacklist(wallet: string): Promise<IssuerBlacklistStatus> {
-  const res = await fetch(`${API_BASE}/issuers/${encodeURIComponent(wallet)}/blacklist`);
-  if (res.status === 404) return { is_blacklisted: false, reason: null, blacklisted_at: null };
+export async function fetchIssuerBlacklist(
+  wallet: string,
+): Promise<IssuerBlacklistStatus> {
+  const res = await fetch(
+    `${API_BASE}/issuers/${encodeURIComponent(wallet)}/blacklist`,
+  );
+  if (res.status === 404)
+    return { is_blacklisted: false, reason: null, blacklisted_at: null };
   if (!res.ok) throw new Error("Failed to fetch issuer blacklist status");
   const raw = await res.json();
   return {
@@ -4818,8 +5071,12 @@ export interface OnboardingBonus {
 }
 
 /** Resolves `null` when the backend has no record of the wallet (404). */
-export async function fetchOnboardingBonus(wallet: string): Promise<OnboardingBonus | null> {
-  const res = await fetch(`${API_BASE}/investors/${encodeURIComponent(wallet)}/onboarding-bonus`);
+export async function fetchOnboardingBonus(
+  wallet: string,
+): Promise<OnboardingBonus | null> {
+  const res = await fetch(
+    `${API_BASE}/investors/${encodeURIComponent(wallet)}/onboarding-bonus`,
+  );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error("Failed to fetch onboarding bonus");
   return res.json();
@@ -4846,9 +5103,12 @@ export async function fetchAlertPreferences(
   wallet: string,
   token?: string,
 ): Promise<Partial<AlertPreferencesPayload> | null> {
-  const res = await fetch(`${API_BASE}/investors/${encodeURIComponent(wallet)}/alert-preferences`, {
-    headers: authHeaders(token),
-  });
+  const res = await fetch(
+    `${API_BASE}/investors/${encodeURIComponent(wallet)}/alert-preferences`,
+    {
+      headers: authHeaders(token),
+    },
+  );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error("Failed to fetch alert preferences");
   return res.json();
@@ -4866,11 +5126,14 @@ export async function setAlertPreferences(
   preferences: AlertPreferencesPayload,
   token?: string,
 ): Promise<SetAlertPreferencesResult> {
-  const res = await fetch(`${API_BASE}/investors/${encodeURIComponent(wallet)}/alert-preferences`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", ...authHeaders(token) },
-    body: JSON.stringify(preferences),
-  });
+  const res = await fetch(
+    `${API_BASE}/investors/${encodeURIComponent(wallet)}/alert-preferences`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
+      body: JSON.stringify(preferences),
+    },
+  );
   if (!res.ok) throw new Error("Failed to save alert preferences");
   return res.json();
 }
@@ -4882,7 +5145,8 @@ export const INVOICE_LEADERBOARD_METRICS = [
   "settlement_speed",
   "issuer_reputation",
 ] as const;
-export type InvoiceLeaderboardMetric = (typeof INVOICE_LEADERBOARD_METRICS)[number];
+export type InvoiceLeaderboardMetric =
+  (typeof INVOICE_LEADERBOARD_METRICS)[number];
 
 export interface InvoiceLeaderboardEntry {
   invoice_id: string;

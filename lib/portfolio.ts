@@ -5,6 +5,8 @@ export interface InvestmentPosition {
     invoice_title: string;
     committed_amount: number;
     status: "active" | "settled" | "expired" | "defaulted";
+    /** Optional due date used by the overdue chip on portfolio rows (#607). */
+    due_date?: string | null;
     share_percent?: number | null;
     key_id?: string;
     key_title?: string;

@@ -223,3 +223,190 @@ export function formatMemberSince(iso: string | null | undefined): string {
   if (Number.isNaN(date.getTime())) return "Unknown";
   return date.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
+
+/* ─── Issuer tiers, limits & progression (#604) ───────────────────────────── */
+
+export const ISSUER_TIERS = ["bronze", "silver", "gold"] as const;
+export type IssuerTierName = (typeof ISSUER_TIERS)[number];
+
+export const ISSUER_TIER_LABELS: Record<IssuerTierName, string> = {
+  bronze: "Bronze",
+  silver: "Silver",
+  gold: "Gold",
+};
+
+export interface IssuerTierConfig {
+  tier: IssuerTierName;
+  label: string;
+  max_invoice_value: number;
+  max_open_exposure: number;
+  min_settled_count: number;
+  max_late_count: number;
+}
+
+export const ISSUER_TIER_CONFIGS: Record<IssuerTierName, IssuerTierConfig> = {
+  bronze: {
+    tier: "bronze",
+    label: "Bronze",
+    max_invoice_value: 25_000,
+    max_open_exposure: 50_000,
+    min_settled_count: 0,
+    max_late_count: 2,
+  },
+  silver: {
+    tier: "silver",
+    label: "Silver",
+    max_invoice_value: 100_000,
+    max_open_exposure: 250_000,
+    min_settled_count: 5,
+    max_late_count: 1,
+  },
+  gold: {
+    tier: "gold",
+    label: "Gold",
+    max_invoice_value: 500_000,
+    max_open_exposure: 1_000_000,
+    min_settled_count: 15,
+    max_late_count: 0,
+  },
+};
+
+export interface IssuerTierLimits {
+  max_invoice_value: number;
+  max_open_exposure: number;
+  current_open_exposure: number;
+}
+
+export interface IssuerTierHistoryCounts {
+  settled_count: number;
+  late_count: number;
+  defaulted_count: number;
+}
+
+export interface IssuerTierNextRequirements {
+  next_tier: IssuerTierName;
+  required_settled_count: number;
+  max_allowed_late_count: number;
+}
+
+export interface IssuerTierDemotion {
+  demoted: boolean;
+  previous_tier?: IssuerTierName | null;
+  reason: string;
+  demoted_at?: string | null;
+}
+
+export interface IssuerTierStatus {
+  address: string;
+  tier: IssuerTierName;
+  limits: IssuerTierLimits;
+  history: IssuerTierHistoryCounts;
+  next_tier_requirements: IssuerTierNextRequirements | null;
+  demotion: IssuerTierDemotion | null;
+}
+
+export function normalizeIssuerTierName(raw: unknown): IssuerTierName {
+  const v = String(raw ?? "").trim().toLowerCase();
+  if (v === "gold") return "gold";
+  if (v === "silver") return "silver";
+  return "bronze";
+}
+
+export function getNextIssuerTier(current: IssuerTierName): IssuerTierName | null {
+  if (current === "bronze") return "silver";
+  if (current === "silver") return "gold";
+  return null;
+}
+
+export interface IssuerTierProgressSummary {
+  nextTier: IssuerTierName | null;
+  requiredSettledCount: number;
+  maxAllowedLateCount: number;
+  settledProgressPct: number;
+  settledRemaining: number;
+  lateWithinThreshold: boolean;
+  exposureUsagePct: number;
+}
+
+export function computeIssuerTierProgress(
+  status: IssuerTierStatus,
+): IssuerTierProgressSummary {
+  const nextTier =
+    status.next_tier_requirements?.next_tier ?? getNextIssuerTier(status.tier);
+
+  if (!nextTier) {
+    const exposureUsagePct =
+      status.limits.max_open_exposure > 0
+        ? Math.min(
+            100,
+            Math.max(
+              0,
+              Math.round(
+                (status.limits.current_open_exposure /
+                  status.limits.max_open_exposure) *
+                  100,
+              ),
+            ),
+          )
+        : 0;
+    return {
+      nextTier: null,
+      requiredSettledCount: status.history.settled_count,
+      maxAllowedLateCount: 0,
+      settledProgressPct: 100,
+      settledRemaining: 0,
+      lateWithinThreshold: true,
+      exposureUsagePct,
+    };
+  }
+
+  const nextConfig = ISSUER_TIER_CONFIGS[nextTier];
+  const requiredSettledCount =
+    status.next_tier_requirements?.required_settled_count ??
+    nextConfig.min_settled_count;
+  const maxAllowedLateCount =
+    status.next_tier_requirements?.max_allowed_late_count ??
+    nextConfig.max_late_count;
+
+  const settledProgressPct =
+    requiredSettledCount > 0
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round((status.history.settled_count / requiredSettledCount) * 100),
+          ),
+        )
+      : 100;
+
+  const settledRemaining = Math.max(
+    0,
+    requiredSettledCount - status.history.settled_count,
+  );
+  const lateWithinThreshold = status.history.late_count <= maxAllowedLateCount;
+
+  const exposureUsagePct =
+    status.limits.max_open_exposure > 0
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round(
+              (status.limits.current_open_exposure /
+                status.limits.max_open_exposure) *
+                100,
+            ),
+          ),
+        )
+      : 0;
+
+  return {
+    nextTier,
+    requiredSettledCount,
+    maxAllowedLateCount,
+    settledProgressPct,
+    settledRemaining,
+    lateWithinThreshold,
+    exposureUsagePct,
+  };
+}

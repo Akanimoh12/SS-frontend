@@ -11,6 +11,9 @@ import { InvoiceHistoryTable } from "./InvoiceHistoryTable";
 import { ActiveInvoices } from "./ActiveInvoices";
 import { IssuerReputationHeaderBadge, IssuerReputationPanel } from "./IssuerReputationPanel";
 import { IssuerCreditTierBadge } from "./IssuerCreditTierBadge";
+import { IssuerTierBadge } from "./IssuerTierBadge";
+import { TierProgressCard } from "./TierProgressCard";
+import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
 
 function IssuerProfileSkeleton() {
   return (
@@ -81,6 +84,7 @@ export function IssuerProfile({ issuerId, now }: IssuerProfileProps) {
               {issuer.name}
             </h1>
             <VerifiedBadge issuer={issuer} />
+            <IssuerTierBadge address={issuer.id} />
             <IssuerCreditTierBadge wallet={issuer.id} />
             <KycStatusNotice issuer={issuer} />
             <IssuerReputationHeaderBadge wallet={issuer.id} />
@@ -96,7 +100,11 @@ export function IssuerProfile({ issuerId, now }: IssuerProfileProps) {
         </CardContent>
       </Card>
 
+      <TierProgressCard address={issuer.id} />
+
       <IssuerReputationPanel wallet={issuer.id} />
+
+      <DynamicYieldCard wallet={issuer.id} />
 
       <IssuerScoreCard invoices={invoices} />
 

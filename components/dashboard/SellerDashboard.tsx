@@ -9,6 +9,9 @@ import { ProfileStatsSkeleton } from "@/components/ui/skeletons";
 import { KycStatusBanner } from "@/components/dashboard/KycStatusBanner";
 import { SellerInvoiceTabs } from "@/components/dashboard/SellerInvoiceTabs";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { TierProgressCard } from "@/components/issuers/TierProgressCard";
+import { SellerTaxProfileSettings } from "@/components/dashboard/SellerTaxProfileSettings";
+import { BulkImportModal } from "@/components/invoices/BulkImportModal";
 import {
   useSellerDashboard,
   useSellerKycStatus,
@@ -109,11 +112,16 @@ export function SellerDashboard() {
         invoiceCount={data.invoices.length}
       />
 
+      <TierProgressCard address={wallet.address} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Earnings Summary</h2>
-        <Button asChild size="sm" data-testid="quick-action-submit-invoice">
-          <Link href="/seller/publish">Submit New Invoice</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <BulkImportModal />
+          <Button asChild size="sm" data-testid="quick-action-submit-invoice">
+            <Link href="/seller/publish">Submit New Invoice</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -174,6 +182,7 @@ export function SellerDashboard() {
           statusFilter={selectedStage}
         />
       </div>
+      <SellerTaxProfileSettings previewAmount={data.total_raised} />
     </div>
   );
 }

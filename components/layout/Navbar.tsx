@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Wallet, Bookmark, Activity, Receipt, ShieldAlert } from "lucide-react";
+import { Wallet, Bookmark, Activity, Receipt, ShieldAlert, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useStellarWallet } from "@/hooks/useStellarWallet";
@@ -10,26 +10,44 @@ import { WalletChip } from "@/components/wallet/WalletChip";
 import { UsdcBalanceChip } from "@/components/wallet/UsdcBalanceChip";
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
 import { CurrencyToggle } from "./CurrencyToggle";
+import { PRIMARY_NAV_ID } from "./SkipLinks";
 import { NetworkBadge } from "@/components/network/NetworkBadge";
+import { WhatsNewButton } from "@/components/changelog/WhatsNewButton";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useEscapeStatus } from "@/hooks/useEscapeStatus";
+import { useSandboxMode } from "@/hooks/useSandboxMode";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
-  const { address, network, isConnected, isConnecting, disconnect, refreshNetwork } =
-    useStellarWallet();
+  const {
+    address,
+    network,
+    isConnected,
+    isConnecting,
+    disconnect,
+    refreshNetwork,
+  } = useStellarWallet();
   const { count, isLoading } = useWatchlist();
   const { escapeEnabled } = useEscapeStatus();
+  const { isSandbox, toggleSandbox } = useSandboxMode();
   const [connectOpen, setConnectOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header
+      aria-label="Site header"
+      className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+    >
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           StellarSettle
         </Link>
 
-        <nav className="hidden md:flex items-center gap-4">
+        <nav
+          id={PRIMARY_NAV_ID}
+          aria-label="Main navigation"
+          className="hidden md:flex items-center gap-4"
+        >
           <Link
             href="/marketplace"
             data-tour="marketplace"
@@ -78,7 +96,7 @@ export function Navbar() {
                     variant="default"
                     className={cn(
                       "ml-1 h-5 min-w-5 text-xs",
-                      isLoading ? "bg-muted animate-pulse" : "bg-primary"
+                      isLoading ? "bg-muted animate-pulse" : "bg-primary",
                     )}
                   >
                     {isLoading ? "..." : count}
@@ -100,8 +118,27 @@ export function Navbar() {
           )}
           {/* #443 — app-wide Stellar network badge */}
           <NetworkBadge />
+          {/* #611 — what's new changelog with unread indicator */}
+          <WhatsNewButton />
+          {/* Language switcher for i18n */}
+          <LanguageSwitcher />
           {/* #437 — USD / XLM display toggle */}
           <CurrencyToggle />
+          {/* #640 — sandbox practice mode toggle */}
+          <Button
+            variant={isSandbox ? "default" : "outline"}
+            size="sm"
+            onClick={toggleSandbox}
+            className={cn(
+              "h-8 gap-1.5 text-xs",
+              isSandbox && "bg-yellow-400 text-yellow-900 hover:bg-yellow-500 border-yellow-400",
+            )}
+            data-testid="sandbox-toggle"
+            title={isSandbox ? "Exit Practice Mode" : "Enter Practice Mode"}
+          >
+            <FlaskConical className="size-3.5" />
+            {isSandbox ? "Practice" : "Practice Mode"}
+          </Button>
           {isConnected ? (
             <div className="flex items-center gap-2">
               {/* USDC balance (#402) sits next to the connected address. */}

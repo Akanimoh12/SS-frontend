@@ -17,6 +17,7 @@ import { Download, ExternalLink } from "lucide-react";
 import { PortfolioRiskIndicator } from "@/components/invoices/InvoiceRiskAlert";
 import { ListPositionButton } from "@/components/dashboard/ListPositionButton";
 import { UnderwritingPositionsTab } from "@/components/underwriting/UnderwritingPositionsTab";
+import { ConcentrationPanel } from "@/components/investor/ConcentrationPanel";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -455,6 +456,9 @@ export function InvestorPortfolioPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Portfolio concentration by debtor, jurisdiction and maturity (#597) */}
+      <ConcentrationPanel />
 
       {/* Tabs */}
       <div className="flex border-b gap-6">

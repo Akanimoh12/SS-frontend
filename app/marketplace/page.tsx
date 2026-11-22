@@ -7,6 +7,7 @@ import { fetchInvoices, resolveInvoiceCategory, type Invoice, type InvoiceCatego
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { TimelockPendingBanner } from "@/components/governance";
 import { FundingProgressBar } from "@/components/invoices";
+import { RecommendedInvoices } from "@/components/marketplace/RecommendedInvoices";
 import {
   ActiveTaxonomyChips,
   CompareToggleButton,
@@ -762,6 +763,7 @@ function MarketplacePageContent() {
 
         {/* Featured: highest-yield live invoices, the discovery hook above the fold. */}
         <FeaturedInvoicesCarousel invoices={allInvoices} />
+        <RecommendedInvoices />
 
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-full md:w-64 shrink-0 space-y-4">

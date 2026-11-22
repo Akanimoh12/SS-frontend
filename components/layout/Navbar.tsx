@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Wallet, Bookmark, Activity, Receipt } from "lucide-react";
+import { Wallet, Bookmark, Activity, Receipt, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useStellarWallet } from "@/hooks/useStellarWallet";
@@ -14,6 +14,7 @@ import { NetworkBadge } from "@/components/network/NetworkBadge";
 import { WhatsNewButton } from "@/components/changelog/WhatsNewButton";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { useWatchlist } from "@/hooks/useWatchlist";
+import { useSandboxMode } from "@/hooks/useSandboxMode";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
@@ -26,6 +27,7 @@ export function Navbar() {
     refreshNetwork,
   } = useStellarWallet();
   const { count, isLoading } = useWatchlist();
+  const { isSandbox, toggleSandbox } = useSandboxMode();
   const [connectOpen, setConnectOpen] = useState(false);
 
   return (
@@ -101,6 +103,21 @@ export function Navbar() {
           <LanguageSwitcher />
           {/* #437 — USD / XLM display toggle */}
           <CurrencyToggle />
+          {/* #640 — sandbox practice mode toggle */}
+          <Button
+            variant={isSandbox ? "default" : "outline"}
+            size="sm"
+            onClick={toggleSandbox}
+            className={cn(
+              "h-8 gap-1.5 text-xs",
+              isSandbox && "bg-yellow-400 text-yellow-900 hover:bg-yellow-500 border-yellow-400",
+            )}
+            data-testid="sandbox-toggle"
+            title={isSandbox ? "Exit Practice Mode" : "Enter Practice Mode"}
+          >
+            <FlaskConical className="size-3.5" />
+            {isSandbox ? "Practice" : "Practice Mode"}
+          </Button>
           {isConnected ? (
             <div className="flex items-center gap-2">
               {/* USDC balance (#402) sits next to the connected address. */}

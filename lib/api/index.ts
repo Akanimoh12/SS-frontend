@@ -27,7 +27,8 @@ export interface Invoice {
     | "funded"
     | "settled"
     | "rejected"
-    | "defaulted";
+    | "defaulted"
+    | "cancelled";
   due_date: string;
   yield_percentage?: number;
   /** Price of one fraction in XLM; the calculator assumes 1 XLM when absent. */

@@ -26,6 +26,7 @@ import { IssuerCreditTierBadge } from "@/components/issuers/IssuerCreditTierBadg
 import { OverdueChip } from "@/components/invoices/OverdueChip";
 import { IssuerTierBadge } from "@/components/issuers/IssuerTierBadge";
 import { useSandboxMode } from "@/hooks/useSandboxMode";
+import { DebtorStatusBadge } from "@/components/debtor/DebtorStatusBadge";
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   open: "default",
@@ -85,6 +86,7 @@ export function InvoiceCard({
               </Badge>
             )}
             <OverdueChip status={invoice.status} dueDate={invoice.due_date} />
+            <DebtorStatusBadge debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
             {showWatchToggle && <WatchlistButton invoiceId={invoice.id} />}
           </div>
         </div>

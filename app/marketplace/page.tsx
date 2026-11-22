@@ -57,6 +57,8 @@ import { WatchlistButton } from "@/components/marketplace/WatchlistButton";
 import { MarketplaceViewTabs } from "@/components/pools/PoolList";
 import { Money, ExchangeRateDisclaimer } from "@/components/currency";
 import { CurrencyToggle } from "@/components/layout/CurrencyToggle";
+import { DebtorStatusBadge } from "@/components/debtor/DebtorStatusBadge";
+import { hasVerifiedAttestation } from "@/lib/attestations";
 import { ArrowDown, ArrowUp, Loader2 } from "lucide-react";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
@@ -112,6 +114,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
               {invoice.status}
             </Badge>
             <OverdueChip status={invoice.status} dueDate={invoice.due_date} />
+            <DebtorStatusBadge debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
             <WatchlistButton invoiceId={invoice.id} />
           </div>
         </div>
@@ -213,6 +216,7 @@ function MarketplacePageContent() {
     toDate: initialToDate,
     minAmount: Number(searchParams.get("minAmount")) || 0,
     maxAmount: Number(searchParams.get("maxAmount")) || 0,
+    verifiedAttestation: searchParams.get("verifiedAttestation") === "true",
   });
 
   const [status, setStatus] = useState<"open" | "funded" | "settled" | "all">(initialStatus);
@@ -289,6 +293,9 @@ function MarketplacePageContent() {
       }
       if (newFilters.maxAmount > 0) {
         params.set("maxAmount", newFilters.maxAmount.toString());
+      }
+      if (newFilters.verifiedAttestation) {
+        params.set("verifiedAttestation", "true");
       }
       if (newStatus !== "all") {
         params.set("status", newStatus);
@@ -576,6 +583,7 @@ function MarketplacePageContent() {
       toDate: "",
       minAmount: 0,
       maxAmount: 0,
+      verifiedAttestation: false,
     };
     setPanelFilters(emptyFilters);
     setStatus("all");
@@ -642,6 +650,12 @@ function MarketplacePageContent() {
         matchesMaxAmount = inv.amount <= panelFilters.maxAmount;
       }
 
+      // Verified-attestation narrowing uses optional embedded counts (#605).
+      // Without the field an invoice is excluded rather than assumed verified.
+      const matchesAttestation = panelFilters.verifiedAttestation
+        ? hasVerifiedAttestation(inv)
+        : true;
+
       return (
         matchesBarStatus &&
         matchesCategory &&
@@ -650,7 +664,8 @@ function MarketplacePageContent() {
         matchesFromDate &&
         matchesToDate &&
         matchesMinAmount &&
-        matchesMaxAmount
+        matchesMaxAmount &&
+        matchesAttestation
       );
     });
 
@@ -719,6 +734,7 @@ function MarketplacePageContent() {
     Boolean(panelFilters.toDate) ||
     panelFilters.minAmount > 0 ||
     panelFilters.maxAmount > 0 ||
+    panelFilters.verifiedAttestation ||
     status !== "all" ||
     debouncedSearch !== "";
 

@@ -5435,6 +5435,7 @@ export async function commitRateAuction(
   );
   if (!res.ok) throw parseInvestError(await res.json().catch(() => null));
   return res.json();
+}
 /* ─── Debtor assignment consent flow (#590) ────────────────────────────────── */
 
 export type InvoiceAssignmentParty = "issuer" | "old_debtor" | "new_debtor";

@@ -70,8 +70,6 @@ import { RateAuctionPanel } from "@/components/invoices/RateAuctionPanel";
 import { DebtorAckPanel, useDebtorAckBlocked } from "@/components/invoices/DebtorAckPanel";
 import { VelocityMeter } from "@/components/investor/VelocityMeter";
 import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
-import { OverdueBanner } from "@/components/invoices/OverdueBanner";
-import { useLateInterest } from "@/hooks/useLateInterest";
 import { RestructureProposalCard } from "@/components/invoices/RestructureProposalCard";
 
 function InvoiceDetailSkeleton() {
@@ -199,6 +197,7 @@ function InvestCallToAction({
             minInvestment={minInvestment}
             maxInvestment={maxInvestment}
             fundingCap={fundingCap}
+            invoiceFaceValue={fundingCap}
             trancheType={trancheStatus ? selectedTranche : undefined}
           />
         )}

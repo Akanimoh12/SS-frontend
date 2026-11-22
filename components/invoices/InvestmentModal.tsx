@@ -17,6 +17,8 @@ import { useInvestorLoyalty } from "@/hooks/useInvestorLoyalty";
 import { useFxRate } from "@/hooks/useFxRate";
 import { useUsdcBalance } from "@/hooks/useUsdcBalance";
 import { useWallet } from "@/context/WalletContext";
+import { useAccreditationStatus } from "@/hooks/useAccreditationStatus";
+import { isAccreditationExpired } from "@/lib/accreditation";
 import { useAccreditation } from "@/context/AccreditationContext";
 import { formatUsdc, formatXLM } from "@/lib/format";
 import {
@@ -38,6 +40,8 @@ interface InvestmentModalProps {
   maxInvestment: number;
   /** Total funding cap used for price-impact calculation (issue #344). */
   fundingCap?: number;
+  /** Face value determines whether an invoice requires active accreditation. */
+  invoiceFaceValue?: number;
   onSuccess?: () => void;
   trancheType?: 1 | 2;
 }
@@ -47,6 +51,7 @@ export function InvestmentModal({
   minInvestment,
   maxInvestment,
   fundingCap,
+  invoiceFaceValue,
   onSuccess,
   trancheType,
 }: InvestmentModalProps) {
@@ -60,6 +65,8 @@ export function InvestmentModal({
   const investMutation = useInvestMutation();
   const fxRate = useFxRate(currency);
   const { address, network } = useWallet();
+  const accreditation = useAccreditationStatus({ enabled: Boolean(address) });
+  const [expiryBlocked, setExpiryBlocked] = useState(false);
   const { balance, refresh } = useUsdcBalance(address, network);
   const loyalty = useInvestorLoyalty(address);
 
@@ -76,11 +83,32 @@ export function InvestmentModal({
   // Accreditation acknowledgement gate (issue #312): first-time investors
   // must complete the disclosure steps before the investment form appears.
   const { isAcknowledged } = useAccreditation();
+  const accreditationData = accreditation.data;
+  const accreditationRequired =
+    invoiceFaceValue !== undefined &&
+    invoiceFaceValue >= (accreditationData?.high_value_threshold ?? 100_000);
+  const isExpired =
+    accreditationRequired &&
+    isAccreditationExpired(accreditationData?.expires_at);
 
   const currencyErrorMessage = investErrorMessage(investMutation.error, currency);
 
   const handleInvest = async () => {
     if (validAmount === null || amountError !== null || insufficientBalance || fxBlocked || feeBlocked) return;
+
+    // Revalidate at submit time: a tab may have remained open past its
+    // accreditation expiry while the form was already visible.
+    if (accreditationRequired) {
+      const latest = await accreditation.refetch();
+      const current = latest.data;
+      if (
+        current &&
+        isAccreditationExpired(current.expires_at)
+      ) {
+        setExpiryBlocked(true);
+        return;
+      }
+    }
 
     await investMutation.mutateAsync({
       invoiceId,
@@ -107,7 +135,20 @@ export function InvestmentModal({
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto p-0 sm:max-w-md">
         <DialogTitle className="sr-only">Investment dialog</DialogTitle>
-        {!isAcknowledged ? (
+        {isExpired || expiryBlocked ? (
+          <div className="space-y-3 p-5" role="alertdialog" aria-labelledby="accreditation-expired-title" data-testid="accreditation-expired-card">
+            <h3 id="accreditation-expired-title" className="text-lg font-semibold">Accreditation expired</h3>
+            <p className="text-sm text-muted-foreground">
+              Your accreditation expired on{" "}
+              <strong>{accreditationData?.expires_at ? new Date(accreditationData.expires_at).toLocaleDateString() : "the date shown in your account"}</strong>.
+              Renew your verification before investing in this invoice.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+              <Button asChild><Link href="/kyc/renew" data-testid="accreditation-renew-cta">Renew accreditation</Link></Button>
+            </div>
+          </div>
+        ) : !isAcknowledged ? (
           <AccreditationGateSteps
             onCancel={() => setIsOpen(false)}
             onAcknowledged={() => {

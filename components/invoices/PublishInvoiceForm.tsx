@@ -185,8 +185,6 @@ export function PublishInvoiceForm() {
   const handlePublish = useCallback(async () => {
     if (!documentCid || debtorBlocked) return;
     if (feeBlocked) return;
-    if (!documentCid) return;
-
     setIsPublishing(true);
     try {
       const values = getValues();
@@ -205,8 +203,7 @@ export function PublishInvoiceForm() {
     } finally {
       setIsPublishing(false);
     }
-  }, [debtorBlocked, documentCid, getValues, jwt, router]);
-  }, [documentCid, getValues, jwt, router, feeBlocked]);
+  }, [debtorBlocked, documentCid, feeBlocked, getValues, jwt, router]);
 
   if (publishedInvoiceId) {
     return (
@@ -393,7 +390,6 @@ export function PublishInvoiceForm() {
               <Button variant="outline" onClick={() => setStep(2)}>
                 Back
               </Button>
-              <Button onClick={handlePublish} disabled={isPublishing || debtorBlocked}>
               <Button onClick={handlePublish} disabled={isPublishing || feeBlocked}>
                 {isPublishing ? "Publishing..." : "Publish"}
               </Button>

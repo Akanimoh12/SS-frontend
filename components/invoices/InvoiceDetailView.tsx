@@ -36,6 +36,7 @@ import { ReturnsCalculator } from "@/components/invoices/ReturnsCalculator";
 import { InvestmentModal } from "@/components/invoices/InvestmentModal";
 import { OverdueBanner } from "@/components/invoices/OverdueBanner";
 import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
+import { InvoiceDiscussionThread } from "@/components/invoices/InvoiceDiscussionThread";
 import { ReturnsBreakdown } from "@/components/invoices/ReturnsBreakdown";
 import { SettlementTimeline } from "@/components/invoices/SettlementTimeline";
 import { RepaymentTimeline } from "@/components/invoices/RepaymentTimeline";
@@ -534,6 +535,12 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         documentUrl={invoice.document_url ?? null}
         additionalDocuments={invoice.documents ?? []}
       /> : null}
+
+      <InvoiceDiscussionThread
+        invoiceId={invoice.id}
+        issuerAddress={invoice.seller}
+        currentUserAddress={address}
+      />
 
       <InvoiceRatingWidget
         invoiceId={invoice.id}

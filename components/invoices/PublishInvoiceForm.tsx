@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DocumentUpload } from "@/components/invoices/DocumentUpload";
 import { FaceValueInput } from "@/components/invoices/FaceValueInput";
+import { FeeBreakdown } from "@/components/fees/FeeBreakdown";
 import { uploadDocumentToIpfs, publishInvoice } from "@/lib/api";
 import {
   MIN_INVOICE_FACE_VALUE,
@@ -68,6 +69,8 @@ export function PublishInvoiceForm() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  // #654: block publish when XLM cannot cover the network fee and reserve.
+  const [feeBlocked, setFeeBlocked] = useState(false);
   const [publishedInvoiceId, setPublishedInvoiceId] = useState<string | null>(
     null,
   );
@@ -181,6 +184,8 @@ export function PublishInvoiceForm() {
 
   const handlePublish = useCallback(async () => {
     if (!documentCid || debtorBlocked) return;
+    if (feeBlocked) return;
+    if (!documentCid) return;
 
     setIsPublishing(true);
     try {
@@ -201,6 +206,7 @@ export function PublishInvoiceForm() {
       setIsPublishing(false);
     }
   }, [debtorBlocked, documentCid, getValues, jwt, router]);
+  }, [documentCid, getValues, jwt, router, feeBlocked]);
 
   if (publishedInvoiceId) {
     return (
@@ -378,11 +384,17 @@ export function PublishInvoiceForm() {
             </div>
             <p className="text-sm font-mono break-all">{documentCid}</p>
 
+            <FeeBreakdown
+              amount={Number(values.faceValue)}
+              onInsufficientBalance={setFeeBlocked}
+            />
+
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(2)}>
                 Back
               </Button>
               <Button onClick={handlePublish} disabled={isPublishing || debtorBlocked}>
+              <Button onClick={handlePublish} disabled={isPublishing || feeBlocked}>
                 {isPublishing ? "Publishing..." : "Publish"}
               </Button>
             </div>

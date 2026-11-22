@@ -10,6 +10,7 @@ import { WalletChip } from "@/components/wallet/WalletChip";
 import { UsdcBalanceChip } from "@/components/wallet/UsdcBalanceChip";
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
 import { CurrencyToggle } from "./CurrencyToggle";
+import { PRIMARY_NAV_ID } from "./SkipLinks";
 import { NetworkBadge } from "@/components/network/NetworkBadge";
 import { WhatsNewButton } from "@/components/changelog/WhatsNewButton";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
@@ -29,13 +30,20 @@ export function Navbar() {
   const [connectOpen, setConnectOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header
+      aria-label="Site header"
+      className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+    >
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           StellarSettle
         </Link>
 
-        <nav className="hidden md:flex items-center gap-4">
+        <nav
+          id={PRIMARY_NAV_ID}
+          aria-label="Main navigation"
+          className="hidden md:flex items-center gap-4"
+        >
           <Link
             href="/marketplace"
             data-tour="marketplace"

@@ -10,6 +10,7 @@ import { GovernanceTab } from "@/components/keys/GovernanceTab";
 import { BuyKeyPanel } from "@/components/keys/BuyKeyPanel";
 import { CreatorVestingSection } from "@/components/keys/CreatorVestingSection";
 import { CreatorRevenueSection } from "@/components/keys/CreatorRevenueSection";
+import { DividendReinvestmentSettings } from "@/components/keys/DividendReinvestmentSettings";
 import { DistributeDividendsPanel } from "@/components/keys/DistributeDividendsPanel";
 import { SupplyCapSettings } from "@/components/keys/SupplyCapSettings";
 import { WhitelistManager } from "@/components/keys/WhitelistManager";
@@ -177,6 +178,10 @@ export function CreatorKeyDetail({ keyId }: CreatorKeyDetailProps) {
                 holdersCount={creatorKey.holders_count}
               />
             </>
+          )}
+
+          {activeTab === "overview" && isHolder && (
+            <DividendReinvestmentSettings keyId={creatorKey.id} />
           )}
 
           {activeTab === "settings" && creatorKey.is_creator && (

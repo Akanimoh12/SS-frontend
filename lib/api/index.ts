@@ -27,7 +27,8 @@ export interface Invoice {
     | "funded"
     | "settled"
     | "rejected"
-    | "defaulted";
+    | "defaulted"
+    | "cancelled";
   due_date: string;
   yield_percentage?: number;
   /** Price of one fraction in XLM; the calculator assumes 1 XLM when absent. */
@@ -174,7 +175,7 @@ export interface InvoiceDetail extends Invoice {
   investors: { address: string; amount: number; timestamp: string }[];
   document_url: string;
   /** Any supporting documents beyond the primary one. */
-  documents?: string[];
+  documents?: Array<string | { cid: string; type?: string; file_name?: string; size?: number }>;
   early_repayment?: {
     amount: number;
     original_maturity_date: string;
@@ -1944,7 +1945,8 @@ export type WalletActivityType =
   | "sell"
   | "transfer"
   | "burn"
-  | "dividend";
+  | "dividend"
+  | "reinvestment";
 
 export interface WalletActivityEvent {
   id: string;
@@ -1969,6 +1971,7 @@ const WALLET_ACTIVITY_TYPES: WalletActivityType[] = [
   "transfer",
   "burn",
   "dividend",
+  "reinvestment",
 ];
 
 function normalizeActivityType(raw: any): WalletActivityType {
@@ -3490,6 +3493,86 @@ export async function fetchInvoiceOrderBook(
     },
   );
   if (!res.ok) throw new Error("Failed to fetch order book");
+  return res.json();
+}
+
+export interface FundingDepthSnapshot {
+  levels: Array<{ committed: number; estimatedHours: number | null }>;
+  updatedAt: string;
+  live: boolean;
+}
+
+export async function fetchInvoiceFundingDepth(
+  invoiceId: string,
+  signal?: AbortSignal,
+): Promise<FundingDepthSnapshot | null> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/funding-depth`,
+    { signal },
+  );
+  if (res.status === 404 || res.status === 204) return null;
+  if (!res.ok) throw new Error("Failed to fetch funding depth");
+  return res.json();
+}
+
+export interface SellerTaxProfile {
+  entityType: string;
+  jurisdiction: string;
+  residenceCountry: string;
+  taxIdLast4: string | null;
+  complete: boolean;
+  withholdingRate: number | null;
+  requiredFields: string[];
+  updatedAt: string | null;
+}
+
+export async function fetchSellerTaxProfile(signal?: AbortSignal): Promise<SellerTaxProfile | null> {
+  const res = await fetch(`${API_BASE}/seller/tax-profile`, { signal });
+  if (res.status === 404 || res.status === 204) return null;
+  if (!res.ok) throw new Error("Failed to load seller tax profile");
+  return res.json();
+}
+
+export async function saveSellerTaxProfile(input: {
+  entityType: string; taxId: string; jurisdiction: string; residenceCountry: string;
+}): Promise<SellerTaxProfile> {
+  const res = await fetch(`${API_BASE}/seller/tax-profile`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error("Failed to save seller tax profile");
+  return res.json();
+}
+
+export interface KeyReinvestmentSettings { enabled: boolean; defaultEnabled: boolean; }
+export interface ReinvestmentPreview { expectedKeys: number; estimatedFee: number; distributionAmount: number; }
+
+export async function fetchKeyReinvestmentSettings(keyId: string, token?: string): Promise<KeyReinvestmentSettings> {
+  const res = await fetch(`${API_BASE}/investor/keys/${encodeURIComponent(keyId)}/reinvestment`, { headers: authHeaders(token) });
+  if (!res.ok) throw new Error("Failed to load reinvestment settings");
+  return res.json();
+}
+
+export async function saveKeyReinvestmentSettings(keyId: string, input: KeyReinvestmentSettings, token?: string): Promise<KeyReinvestmentSettings> {
+  const res = await fetch(`${API_BASE}/investor/keys/${encodeURIComponent(keyId)}/reinvestment`, {
+    method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders(token) }, body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error("Failed to save reinvestment settings");
+  return res.json();
+}
+
+export async function previewDividendReinvestment(keyId: string, amount: number, token?: string): Promise<ReinvestmentPreview> {
+  const res = await fetch(`${API_BASE}/investor/keys/${encodeURIComponent(keyId)}/reinvestment/preview`, {
+    method: "POST", headers: { "Content-Type": "application/json", ...authHeaders(token) }, body: JSON.stringify({ amount }),
+  });
+  if (!res.ok) throw new Error("Could not preview dividend reinvestment");
+  return res.json();
+}
+
+export async function confirmDividendReinvestment(keyId: string, amount: number, token?: string): Promise<{ success: boolean; availableAmount: number }> {
+  const res = await fetch(`${API_BASE}/investor/keys/${encodeURIComponent(keyId)}/reinvestment/confirm`, {
+    method: "POST", headers: { "Content-Type": "application/json", ...authHeaders(token) }, body: JSON.stringify({ amount }),
+  });
+  if (!res.ok) throw new Error("Reinvestment failed; the dividend remains available as cash");
   return res.json();
 }
 

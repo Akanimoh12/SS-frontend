@@ -36,6 +36,7 @@ import { ReturnsCalculator } from "@/components/invoices/ReturnsCalculator";
 import { InvestmentModal } from "@/components/invoices/InvestmentModal";
 import { OverdueBanner } from "@/components/invoices/OverdueBanner";
 import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
+import { InvoiceDiscussionThread } from "@/components/invoices/InvoiceDiscussionThread";
 import { ReturnsBreakdown } from "@/components/invoices/ReturnsBreakdown";
 import { SettlementTimeline } from "@/components/invoices/SettlementTimeline";
 import { ShareInvoiceButton } from "@/components/invoices/ShareInvoiceButton";
@@ -67,8 +68,6 @@ import { ImpactReport } from "@/components/invoices/ImpactReport";
 import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
 import { RateAuctionPanel } from "@/components/invoices/RateAuctionPanel";
 import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
-import { OverdueBanner } from "@/components/invoices/OverdueBanner";
-import { useLateInterest } from "@/hooks/useLateInterest";
 import { RestructureProposalCard } from "@/components/invoices/RestructureProposalCard";
 
 function InvoiceDetailSkeleton() {
@@ -519,6 +518,12 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         invoiceId={invoice.id}
         documentUrl={invoice.document_url ?? null}
         additionalDocuments={invoice.documents ?? []}
+      />
+
+      <InvoiceDiscussionThread
+        invoiceId={invoice.id}
+        issuerAddress={invoice.seller}
+        currentUserAddress={address}
       />
 
       <InvoiceRatingWidget

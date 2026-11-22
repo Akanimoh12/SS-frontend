@@ -18,6 +18,15 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentVerificationBadge } from "@/components/invoices/DocumentVerificationBadge";
+import { InvoiceDocumentExpiryAlert } from "@/components/invoices/InvoiceDocumentExpiryAlert";
+import { DocumentRenewalModal } from "@/components/invoices/DocumentRenewalModal";
+import { Badge } from "@/components/ui/badge";
+import {
+  calculateDocumentExpiry,
+  loadDocumentMetadata,
+  saveDocumentMetadata,
+  type DocumentExpiryMetadata,
+} from "@/lib/invoiceDocumentExpiry";
 import {
   documentFileName,
   guessDocumentKind,
@@ -279,10 +288,44 @@ function DocumentViewer({
   );
 }
 
-function IpfsDocumentPanel({ documentUrl, invoiceId }: { documentUrl: string; invoiceId: string }) {
+function IpfsDocumentPanel({
+  documentUrl,
+  invoiceId,
+  meta,
+  onRenew,
+}: {
+  documentUrl: string;
+  invoiceId: string;
+  meta?: DocumentExpiryMetadata;
+  onRenew?: (updated: DocumentExpiryMetadata) => void;
+}) {
   const candidates = ipfsGatewayCandidates(documentUrl);
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [localMeta, setLocalMeta] = useState<DocumentExpiryMetadata | null>(() => {
+    return meta ?? loadDocumentMetadata(invoiceId, documentUrl) ?? {
+      id: `doc-${encodeURIComponent(documentUrl)}`,
+      invoiceId,
+      documentUrl,
+      name: documentFileName(documentUrl),
+      isMandatory: true,
+      expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+      gracePeriodDays: 7,
+      remindersSent: [],
+      auditHistory: [
+        {
+          id: `audit-init-${Date.now()}`,
+          action: "uploaded",
+          timestamp: new Date().toISOString(),
+          actor: "issuer",
+          notes: "Initial document attachment",
+        },
+      ],
+    };
+  });
+
+  const effectiveMeta = meta ?? localMeta;
+  const expiryStatus = effectiveMeta ? calculateDocumentExpiry(effectiveMeta) : null;
 
   // A new document resets the retry state.
   useEffect(() => {
@@ -389,6 +432,41 @@ function IpfsDocumentPanel({ documentUrl, invoiceId }: { documentUrl: string; in
       {/* Integrity check runs in the background and never blocks the viewer (#412). */}
       <DocumentVerificationBadge documentUrl={documentUrl} />
 
+      {/* Expiry metadata, countdown, and renewal flow (#658) */}
+      {effectiveMeta && expiryStatus && (
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-xs"
+          data-testid="document-expiry-bar"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-foreground" data-testid="doc-expiry-date">
+              Expires: {new Date(effectiveMeta.expiresAt).toLocaleDateString()}
+            </span>
+            <Badge
+              variant={
+                expiryStatus.status === "active"
+                  ? "outline"
+                  : expiryStatus.status === "expiring_soon"
+                  ? "secondary"
+                  : "destructive"
+              }
+              data-testid="doc-status-badge"
+            >
+              {expiryStatus.status.replace(/_/g, " ").toUpperCase()}
+            </Badge>
+            <span className="text-muted-foreground">{expiryStatus.explanation}</span>
+          </div>
+          <DocumentRenewalModal
+            meta={effectiveMeta}
+            onRenew={(updated) => {
+              setLocalMeta(updated);
+              saveDocumentMetadata(updated);
+              onRenew?.(updated);
+            }}
+          />
+        </div>
+      )}
+
       <DocumentViewer
         url={url}
         kind={kind}
@@ -409,6 +487,8 @@ interface InvoiceDocumentsTabProps {
   documentUrl: string | null;
   /** Any additional supporting documents the issuer attached. */
   additionalDocuments?: string[];
+  /** Optional expiry metadata for documents (#658). */
+  documentsMetadata?: DocumentExpiryMetadata[];
 }
 
 /**
@@ -419,10 +499,37 @@ export function InvoiceDocumentsTab({
   invoiceId,
   documentUrl,
   additionalDocuments = [],
+  documentsMetadata = [],
 }: InvoiceDocumentsTabProps) {
   const extras = additionalDocuments.filter((url) => Boolean(url));
   const primary = documentUrl ?? null;
   const documents = [...(primary ? [primary] : []), ...extras];
+
+  const allMeta = documents.map((url) => {
+    const existing = documentsMetadata.find((m) => m.documentUrl === url);
+    return (
+      existing ??
+      loadDocumentMetadata(invoiceId, url) ?? {
+        id: `doc-${encodeURIComponent(url)}`,
+        invoiceId,
+        documentUrl: url,
+        name: documentFileName(url),
+        isMandatory: true,
+        expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        gracePeriodDays: 7,
+        remindersSent: [],
+        auditHistory: [
+          {
+            id: `audit-${Date.now()}`,
+            action: "uploaded" as const,
+            timestamp: new Date().toISOString(),
+            actor: "issuer",
+            notes: "Initial document attachment",
+          },
+        ],
+      }
+    );
+  });
 
   if (!primary && extras.length === 0) {
     return (
@@ -450,8 +557,13 @@ export function InvoiceDocumentsTab({
     return (
       <Card data-testid="invoice-documents">
         {sectionHeader}
-        <CardContent>
-          <IpfsDocumentPanel documentUrl={primary} invoiceId={invoiceId} />
+        <CardContent className="space-y-4">
+          <InvoiceDocumentExpiryAlert documents={allMeta} />
+          <IpfsDocumentPanel
+            documentUrl={primary}
+            invoiceId={invoiceId}
+            meta={allMeta.find((m) => m.documentUrl === primary)}
+          />
         </CardContent>
       </Card>
     );
@@ -460,7 +572,8 @@ export function InvoiceDocumentsTab({
   return (
     <Card data-testid="invoice-documents">
       {sectionHeader}
-      <CardContent>
+      <CardContent className="space-y-4">
+        <InvoiceDocumentExpiryAlert documents={allMeta} />
         <Tabs defaultValue={primary ?? documents[0]}>
           <TabsList>
             {documents.map((url) => (
@@ -471,7 +584,11 @@ export function InvoiceDocumentsTab({
           </TabsList>
           {documents.map((url) => (
             <TabsContent key={url} value={url} className="mt-4">
-              <IpfsDocumentPanel documentUrl={url} invoiceId={invoiceId} />
+              <IpfsDocumentPanel
+                documentUrl={url}
+                invoiceId={invoiceId}
+                meta={allMeta.find((m) => m.documentUrl === url)}
+              />
             </TabsContent>
           ))}
         </Tabs>

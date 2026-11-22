@@ -53,19 +53,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <I18nextProvider i18n={i18n}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <QueryClientProvider client={queryClient}>
-          <WalletProvider>
-            <NetworkMismatchProvider>
-              <AuthProvider>
-                <CurrencyProvider>
-                  <AccreditationProvider>
-                    <PreferencesProvider>
-                      {children}
-                      <PlatformOnboardingTour />
-                      <Toaster position="top-right" />
-                    </PreferencesProvider>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
           {/* #379: one shared wallet session for the whole app */}
           <WalletProvider>
             {/* #610: global wrong-network detection and transaction guard */}
@@ -74,9 +61,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 {/* #437: one shared display currency + live XLM/USD rate */}
                 <CurrencyProvider>
                   <AccreditationProvider>
-                    {children}
-                    <PlatformOnboardingTour />
-                    <Toaster position="top-right" />
+                    <PreferencesProvider>
+                      {children}
+                      <PlatformOnboardingTour />
+                      <Toaster position="top-right" />
+                    </PreferencesProvider>
                   </AccreditationProvider>
                 </CurrencyProvider>
               </AuthProvider>
@@ -85,8 +74,5 @@ export function Providers({ children }: { children: React.ReactNode }) {
         </QueryClientProvider>
       </ThemeProvider>
     </I18nextProvider>
-        </I18nextProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
   );
 }

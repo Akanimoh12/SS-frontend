@@ -12,6 +12,7 @@ import { WalletProvider } from "@/context/WalletContext";
 import { NetworkMismatchProvider } from "@/context/NetworkMismatchContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
 import { AccreditationProvider } from "@/context/AccreditationContext";
+import { PreferencesProvider } from "@/context/PreferencesContext";
 import { PlatformOnboardingTour } from "@/components/onboarding/PlatformOnboardingTour";
 import i18n from "@/src/i18n";
 
@@ -21,20 +22,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: { staleTime: 60 * 1000 },
-          // #281 — surface every failed mutation as a toast notification
           mutations: { onError: notifyApiError },
         },
       }),
   );
 
-  // Set document.documentElement.lang on mount and when i18n language changes
   useEffect(() => {
-    // Initialize language from localStorage if available
     const storedLanguage = localStorage.getItem("language");
     if (storedLanguage && ["en", "es", "fr"].includes(storedLanguage)) {
       i18n.changeLanguage(storedLanguage);
     } else {
-      // Detect from navigator.language
       const navLang = navigator.language.split("-")[0];
       if (["en", "es", "fr"].includes(navLang)) {
         i18n.changeLanguage(navLang);
@@ -53,6 +50,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
+    <I18nextProvider i18n={i18n}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <QueryClientProvider client={queryClient}>
+          <WalletProvider>
+            <NetworkMismatchProvider>
+              <AuthProvider>
+                <CurrencyProvider>
+                  <AccreditationProvider>
+                    <PreferencesProvider>
+                      {children}
+                      <PlatformOnboardingTour />
+                      <Toaster position="top-right" />
+                    </PreferencesProvider>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
@@ -72,6 +82,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
               </AuthProvider>
             </NetworkMismatchProvider>
           </WalletProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </I18nextProvider>
         </I18nextProvider>
       </QueryClientProvider>
     </ThemeProvider>

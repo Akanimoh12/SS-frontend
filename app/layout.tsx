@@ -6,6 +6,7 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/network/NetworkBanner";
+import { buildPreferencesScript } from "@/lib/preferences-script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,6 +21,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* #650/#651 — apply stored display preferences before first paint so
+            there is no layout shift. Built from a pure, unit-tested builder. */}
+        <script dangerouslySetInnerHTML={{ __html: buildPreferencesScript() }} />
+      </head>
       <body>
         <TooltipProvider>
           <Providers>

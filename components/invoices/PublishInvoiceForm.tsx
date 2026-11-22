@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +21,11 @@ import {
 } from "@/lib/validation/face-value";
 import { validateDeadline } from "@/lib/validation/deadline";
 import { useAuth } from "@/hooks/useAuth";
+import { TemplatesPanel } from "@/components/invoices/TemplatesPanel";
+import { BlockedDebtorNotice } from "@/components/debtor/BlockedDebtorNotice";
+import { useDebtorStatus } from "@/hooks/useDebtorStatus";
+import { isBlocked } from "@/lib/debtorStatus";
+import { DUPLICATE_STORAGE_KEY } from "@/components/invoices/DuplicateInvoiceButton";
 
 const detailsSchema = z.object({
   title: z.string().min(1, "Invoice title is required"),
@@ -29,6 +34,8 @@ const detailsSchema = z.object({
     .string()
     .min(1, "Face value is required")
     .refine((v) => Number(v) > 0, "Face value must be greater than 0"),
+  debtor: z.string().optional(),
+  terms: z.string().optional(),
   fundingDeadline: z
     .string()
     .min(1, "Funding deadline is required")
@@ -81,11 +88,38 @@ export function PublishInvoiceForm() {
       title: "",
       description: "",
       faceValue: "",
+      debtor: "",
+      terms: "",
       fundingDeadline: "",
     },
   });
 
   const [isFaceValueValid, setIsFaceValueValid] = useState(false);
+  const debtorHash = watch("debtor");
+  const { data: debtorStatus } = useDebtorStatus(debtorHash);
+  const debtorBlocked = debtorStatus ? isBlocked(debtorStatus.status) : false;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isDuplicate = new URLSearchParams(window.location.search).has("duplicate");
+    if (!isDuplicate) return;
+    try {
+      const raw = window.sessionStorage.getItem(DUPLICATE_STORAGE_KEY);
+      if (!raw) return;
+      const copy = JSON.parse(raw) as Record<string, unknown>;
+      if (typeof copy.title === "string") setValue("title", copy.title);
+      if (typeof copy.description === "string") setValue("description", copy.description);
+      if (typeof copy.faceValue === "string") {
+        setValue("faceValue", copy.faceValue);
+        setIsFaceValueValid(Number(copy.faceValue) > 0);
+      }
+      if (typeof copy.debtor === "string") setValue("debtor", copy.debtor);
+      if (typeof copy.terms === "string") setValue("terms", copy.terms);
+      window.sessionStorage.removeItem(DUPLICATE_STORAGE_KEY);
+    } catch {
+      // A corrupt duplicate payload is ignored; the form stays usable.
+    }
+  }, [setValue]);
 
   const handleNextFromDetails = useCallback(async () => {
     const valid = await trigger();
@@ -139,7 +173,17 @@ export function PublishInvoiceForm() {
       });
   }, [jwt]);
 
+  const handleApplyTemplate = useCallback(
+    (template: { debtor: string; terms: string; description: string }) => {
+      setValue("debtor", template.debtor, { shouldValidate: true, shouldDirty: true });
+      setValue("terms", template.terms, { shouldValidate: true, shouldDirty: true });
+      setValue("description", template.description, { shouldValidate: true, shouldDirty: true });
+    },
+    [setValue]
+  );
+
   const handlePublish = useCallback(async () => {
+    if (!documentCid || debtorBlocked) return;
     if (feeBlocked) return;
     if (!documentCid) return;
 
@@ -152,6 +196,8 @@ export function PublishInvoiceForm() {
         faceValue: Number(values.faceValue),
         fundingDeadline: values.fundingDeadline,
         documentCid,
+        debtor: values.debtor || undefined,
+        terms: values.terms || undefined,
       }, jwt ?? undefined);
       router.push(`/dashboard/seller/publish/success?invoiceId=${result.id}`);
     } catch {
@@ -159,6 +205,7 @@ export function PublishInvoiceForm() {
     } finally {
       setIsPublishing(false);
     }
+  }, [debtorBlocked, documentCid, getValues, jwt, router]);
   }, [documentCid, getValues, jwt, router, feeBlocked]);
 
   if (publishedInvoiceId) {
@@ -231,6 +278,27 @@ export function PublishInvoiceForm() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="invoice-debtor">Debtor</Label>
+              <Input id="invoice-debtor" {...register("debtor")} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="invoice-terms">Terms</Label>
+              <Input id="invoice-terms" {...register("terms")} />
+            </div>
+
+            <BlockedDebtorNotice debtorHash={debtorHash} />
+
+            <TemplatesPanel
+              values={{
+                debtor: watch("debtor"),
+                terms: watch("terms"),
+                description: watch("description"),
+              }}
+              onApply={handleApplyTemplate}
+            />
+
+            <div className="space-y-2">
               <Label htmlFor="invoice-deadline">Funding Deadline</Label>
               <Input
                 id="invoice-deadline"
@@ -244,7 +312,7 @@ export function PublishInvoiceForm() {
               )}
             </div>
 
-            <Button onClick={handleNextFromDetails} disabled={!isFaceValueValid}>
+            <Button onClick={handleNextFromDetails} disabled={!isFaceValueValid || debtorBlocked}>
               Next
             </Button>
           </div>
@@ -325,6 +393,7 @@ export function PublishInvoiceForm() {
               <Button variant="outline" onClick={() => setStep(2)}>
                 Back
               </Button>
+              <Button onClick={handlePublish} disabled={isPublishing || debtorBlocked}>
               <Button onClick={handlePublish} disabled={isPublishing || feeBlocked}>
                 {isPublishing ? "Publishing..." : "Publish"}
               </Button>

@@ -25,6 +25,7 @@ import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStat
 import { IssuerCreditTierBadge } from "@/components/issuers/IssuerCreditTierBadge";
 import { OverdueChip } from "@/components/invoices/OverdueChip";
 import { IssuerTierBadge } from "@/components/issuers/IssuerTierBadge";
+import { DebtorStatusBadge } from "@/components/debtor/DebtorStatusBadge";
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   open: "default",
@@ -78,6 +79,7 @@ export function InvoiceCard({
               {invoice.status}
             </Badge>
             <OverdueChip status={invoice.status} dueDate={invoice.due_date} />
+            <DebtorStatusBadge debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
             {showWatchToggle && <WatchlistButton invoiceId={invoice.id} />}
           </div>
         </div>

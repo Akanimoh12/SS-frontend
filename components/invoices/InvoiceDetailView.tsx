@@ -198,6 +198,7 @@ function InvestCallToAction({
             minInvestment={minInvestment}
             maxInvestment={maxInvestment}
             fundingCap={fundingCap}
+            invoiceFaceValue={fundingCap}
             trancheType={trancheStatus ? selectedTranche : undefined}
           />
         )}

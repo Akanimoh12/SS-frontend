@@ -53,6 +53,7 @@ import { InvoiceClassificationBadges } from "@/components/marketplace/InvoiceCla
 import { InvoiceTagPills } from "@/components/marketplace/InvoiceTagPills";
 import { SettlementCountdown } from "@/components/marketplace/SettlementCountdown";
 import { AnnouncementFeed } from "@/components/invoices/AnnouncementFeed";
+import { FundingDepth } from "@/components/marketplace/FundingDepth";
 import { SyndicatePanel } from "@/components/invoices/SyndicatePanel";
 import { InvoiceFraudReport, InvoiceUnderReviewBanner } from "@/components/invoices/InvoiceFraudReport";
 import { InvoiceRiskAlert } from "@/components/invoices/InvoiceRiskAlert";
@@ -67,8 +68,6 @@ import { ImpactReport } from "@/components/invoices/ImpactReport";
 import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
 import { RateAuctionPanel } from "@/components/invoices/RateAuctionPanel";
 import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
-import { OverdueBanner } from "@/components/invoices/OverdueBanner";
-import { useLateInterest } from "@/hooks/useLateInterest";
 import { RestructureProposalCard } from "@/components/invoices/RestructureProposalCard";
 
 function InvoiceDetailSkeleton() {
@@ -470,6 +469,7 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
       )}
 
       <OrderBookDepthChart invoiceId={invoice.id} />
+      {invoice.status === "open" && <FundingDepth invoiceId={invoice.id} />}
 
       <DynamicYieldCard wallet={invoice.seller} invoiceRate={invoice.yield_percentage} />
 
@@ -515,11 +515,11 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
 
       <AttestationList invoiceId={invoice.id} />
 
-      <InvoiceDocumentsTab
+      {(invoice.document_url || invoice.documents?.length) ? <InvoiceDocumentsTab
         invoiceId={invoice.id}
         documentUrl={invoice.document_url ?? null}
         additionalDocuments={invoice.documents ?? []}
-      />
+      /> : null}
 
       <InvoiceRatingWidget
         invoiceId={invoice.id}

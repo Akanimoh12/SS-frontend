@@ -26,6 +26,7 @@ import { IssuerCreditTierBadge } from "@/components/issuers/IssuerCreditTierBadg
 import { OverdueChip } from "@/components/invoices/OverdueChip";
 import { IssuerTierBadge } from "@/components/issuers/IssuerTierBadge";
 import { DebtorStatusBadge } from "@/components/debtor/DebtorStatusBadge";
+import { FundingDepth } from "@/components/marketplace/FundingDepth";
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   open: "default",
@@ -116,6 +117,7 @@ export function InvoiceCard({
           minThreshold={invoice.min_funding_threshold}
           investorCount={invoice.investor_count}
         />
+        <FundingDepth invoiceId={invoice.id} compact />
 
         {/* Threshold warning: visible when closing within 24h and min threshold unmet (#481) */}
         {published && !expired && (

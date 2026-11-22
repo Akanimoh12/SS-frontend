@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRepaymentHistory, type RepaymentStatus } from "@/hooks/useRepaymentHistory";
+import { useInstallments } from "@/hooks/useInstallments";
 
 const STATUS_LABELS: Record<RepaymentStatus, string> = {
   received: "Received",
@@ -39,6 +40,8 @@ export interface RepaymentTimelineProps {
 
 export function RepaymentTimeline({ invoiceId }: RepaymentTimelineProps) {
   const { data, isLoading, isError } = useRepaymentHistory(invoiceId);
+  // With a payment plan the bar reflects paid installments (#776).
+  const { schedule } = useInstallments(invoiceId);
 
   if (isLoading) {
     return (
@@ -67,7 +70,9 @@ export function RepaymentTimeline({ invoiceId }: RepaymentTimelineProps) {
 
   if (!data) return null;
 
-  const { events, totalReceived, amountDue } = data;
+  const { events } = data;
+  const totalReceived = schedule ? schedule.totalPaid : data.totalReceived;
+  const amountDue = schedule ? schedule.totalAmount : data.amountDue;
   const progressPct =
     amountDue > 0 ? Math.min(100, (totalReceived / amountDue) * 100) : 0;
   const remaining = Math.max(0, amountDue - totalReceived);

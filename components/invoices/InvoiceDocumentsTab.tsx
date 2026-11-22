@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentVerificationBadge } from "@/components/invoices/DocumentVerificationBadge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoiceDocumentExpiryAlert } from "@/components/invoices/InvoiceDocumentExpiryAlert";
 import { DocumentRenewalModal } from "@/components/invoices/DocumentRenewalModal";
 import { Badge } from "@/components/ui/badge";
@@ -96,15 +97,17 @@ function DownloadProgress({
 function InvoiceDocumentDownload({
   invoiceId,
   documentUrl,
+  filename: providedFilename,
 }: {
   invoiceId: string;
   documentUrl: string;
+  filename?: string;
 }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [status, setStatus] = useState("");
   const [progress, setProgress] = useState<DocumentDownloadProgress | null>(null);
   const [error, setError] = useState("");
-  const filename = invoiceDocumentFileName(invoiceId, documentUrl);
+  const filename = providedFilename || invoiceDocumentFileName(invoiceId, documentUrl);
 
   async function download() {
     setIsDownloading(true);
@@ -138,7 +141,7 @@ function InvoiceDocumentDownload({
         size="sm"
         onClick={download}
         disabled={isDownloading}
-        aria-label={`Download ${documentFileName(documentUrl)}`}
+        aria-label={`Download ${providedFilename || documentFileName(documentUrl)}`}
         data-testid="document-download-button"
       >
         {isDownloading ? <LoaderCircle className="animate-spin" /> : <Download />}
@@ -288,26 +291,31 @@ function DocumentViewer({
   );
 }
 
+export interface SupportingDocument { cid: string; type?: string; file_name?: string; size?: number; }
+
 function IpfsDocumentPanel({
   documentUrl,
   invoiceId,
+  document,
   meta,
   onRenew,
 }: {
   documentUrl: string;
   invoiceId: string;
+  document?: SupportingDocument;
   meta?: DocumentExpiryMetadata;
   onRenew?: (updated: DocumentExpiryMetadata) => void;
 }) {
   const candidates = ipfsGatewayCandidates(documentUrl);
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const [localMeta, setLocalMeta] = useState<DocumentExpiryMetadata | null>(() => {
     return meta ?? loadDocumentMetadata(invoiceId, documentUrl) ?? {
       id: `doc-${encodeURIComponent(documentUrl)}`,
       invoiceId,
       documentUrl,
-      name: documentFileName(documentUrl),
+      name: document?.file_name || documentFileName(documentUrl),
       isMandatory: true,
       expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
       gracePeriodDays: 7,
@@ -335,13 +343,13 @@ function IpfsDocumentPanel({
 
   // ipfs:// and bare CIDs are recorded by some issuers, so they have to be
   // verified as reachable before claiming the document is missing.
-  const { isLoading, isError, isFetching } = useQuery({
+  const { data: documentUrlAvailable, isLoading, isError, isFetching, error } = useQuery({
     queryKey: ["ipfs-document", documentUrl, candidateIndex],
     queryFn: async () => {
       const url = candidates[candidateIndex];
-      const res = await fetch(url, { method: "HEAD" });
+      const res = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(15_000) });
       if (!res.ok) throw new Error(`Document unavailable (${res.status})`);
-      return url;
+      return { url, size: Number(res.headers.get("content-length")) || null };
     },
     enabled: candidates.length > 0,
     retry: false,
@@ -364,9 +372,9 @@ function IpfsDocumentPanel({
         data-testid="document-unavailable"
       >
         <FileWarning className="mx-auto h-8 w-8 text-muted-foreground" />
-        <p className="mt-2 text-sm font-medium">Document could not be loaded</p>
+        <p className="mt-2 text-sm font-medium">{error instanceof DOMException && error.name === "TimeoutError" ? "Document request timed out" : "Document could not be loaded"}</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          The file is stored on IPFS and may be temporarily unreachable.
+          {error instanceof DOMException && error.name === "TimeoutError" ? "The gateway took too long to respond. Try another gateway or retry later." : "The file is stored on IPFS and may be temporarily unreachable."}
         </p>
         <div className="mt-4 flex items-center justify-center gap-2">
           {hasAnotherGateway && (
@@ -399,7 +407,7 @@ function IpfsDocumentPanel({
   }
 
   const url = candidates[candidateIndex];
-  const name = documentFileName(documentUrl);
+  const name = document?.file_name || documentFileName(documentUrl);
   const kind = guessDocumentKind(documentUrl);
 
   return (
@@ -413,7 +421,7 @@ function IpfsDocumentPanel({
           <span className="truncate">{name}</span>
         </p>
         <div className="flex shrink-0 items-center gap-1">
-          <InvoiceDocumentDownload invoiceId={invoiceId} documentUrl={documentUrl} />
+          <InvoiceDocumentDownload invoiceId={invoiceId} documentUrl={documentUrl} filename={document?.file_name} />
           <Button asChild variant="ghost" size="sm">
             <a href={url} target="_blank" rel="noopener noreferrer" data-testid="document-open-external">
               <ExternalLink />
@@ -421,6 +429,11 @@ function IpfsDocumentPanel({
             </a>
           </Button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground" data-testid="document-metadata">
+        <span>{document?.type || (kind === "pdf" ? "PDF" : kind)}</span>
+        {(document?.size ?? documentUrlAvailable?.size) != null && <span>{formatBytes(document?.size ?? documentUrlAvailable!.size!)}</span>}
       </div>
 
       {isIpfsReference(documentUrl) && (
@@ -467,16 +480,33 @@ function IpfsDocumentPanel({
         </div>
       )}
 
-      <DocumentViewer
-        url={url}
-        kind={kind}
-        name={name}
-        onRenderError={() => {
-          // The HEAD probe passed but the bytes did not render — treat it the
-          // same as an unreachable gateway.
-          setFailed(true);
-        }}
-      />
+      {kind === "pdf" ? (
+        <>
+          <Button type="button" onClick={() => setViewerOpen(true)} data-testid="document-view-button">
+            View PDF
+          </Button>
+          <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+            <DialogContent className="max-w-5xl" data-testid="document-viewer-modal">
+              <DialogHeader>
+                <DialogTitle>{name}</DialogTitle>
+              </DialogHeader>
+              <DocumentViewer
+                url={url}
+                kind={kind}
+                name={name}
+                onRenderError={() => setFailed(true)}
+              />
+            </DialogContent>
+          </Dialog>
+        </>
+      ) : (
+        <DocumentViewer
+          url={url}
+          kind={kind}
+          name={name}
+          onRenderError={() => setFailed(true)}
+        />
+      )}
     </div>
   );
 }
@@ -486,7 +516,7 @@ interface InvoiceDocumentsTabProps {
   /** Primary document, as returned by the API. */
   documentUrl: string | null;
   /** Any additional supporting documents the issuer attached. */
-  additionalDocuments?: string[];
+  additionalDocuments?: Array<string | SupportingDocument>;
   /** Optional expiry metadata for documents (#658). */
   documentsMetadata?: DocumentExpiryMetadata[];
 }
@@ -501,19 +531,19 @@ export function InvoiceDocumentsTab({
   additionalDocuments = [],
   documentsMetadata = [],
 }: InvoiceDocumentsTabProps) {
-  const extras = additionalDocuments.filter((url) => Boolean(url));
-  const primary = documentUrl ?? null;
+  const extras: SupportingDocument[] = additionalDocuments.map((item) => typeof item === "string" ? { cid: item } : item).filter((item) => Boolean(item.cid));
+  const primary: SupportingDocument | null = documentUrl ? { cid: documentUrl } : null;
   const documents = [...(primary ? [primary] : []), ...extras];
 
-  const allMeta = documents.map((url) => {
-    const existing = documentsMetadata.find((m) => m.documentUrl === url);
+  const allMeta = documents.map((doc) => {
+    const existing = documentsMetadata.find((m) => m.documentUrl === doc.cid);
     return (
       existing ??
-      loadDocumentMetadata(invoiceId, url) ?? {
-        id: `doc-${encodeURIComponent(url)}`,
+      loadDocumentMetadata(invoiceId, doc.cid) ?? {
+        id: `doc-${encodeURIComponent(doc.cid)}`,
         invoiceId,
-        documentUrl: url,
-        name: documentFileName(url),
+        documentUrl: doc.cid,
+        name: doc.file_name || documentFileName(doc.cid),
         isMandatory: true,
         expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
         gracePeriodDays: 7,
@@ -549,7 +579,7 @@ export function InvoiceDocumentsTab({
   const sectionHeader = (
     <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
       <h2 className="text-lg font-semibold">Documents</h2>
-      <InvoiceBulkExport invoiceId={invoiceId} documents={documents} />
+      <InvoiceBulkExport invoiceId={invoiceId} documents={documents.map((document) => document.cid)} />
     </CardHeader>
   );
 
@@ -560,9 +590,10 @@ export function InvoiceDocumentsTab({
         <CardContent className="space-y-4">
           <InvoiceDocumentExpiryAlert documents={allMeta} />
           <IpfsDocumentPanel
-            documentUrl={primary}
+            documentUrl={primary.cid}
             invoiceId={invoiceId}
-            meta={allMeta.find((m) => m.documentUrl === primary)}
+            document={primary}
+            meta={allMeta.find((m) => m.documentUrl === primary.cid)}
           />
         </CardContent>
       </Card>
@@ -574,20 +605,21 @@ export function InvoiceDocumentsTab({
       {sectionHeader}
       <CardContent className="space-y-4">
         <InvoiceDocumentExpiryAlert documents={allMeta} />
-        <Tabs defaultValue={primary ?? documents[0]}>
+        <Tabs defaultValue={primary?.cid ?? documents[0].cid}>
           <TabsList>
-            {documents.map((url) => (
-              <TabsTrigger key={url} value={url}>
-                {documentFileName(url)}
+            {documents.map((document) => (
+              <TabsTrigger key={document.cid} value={document.cid}>
+                {document.file_name || documentFileName(document.cid)}
               </TabsTrigger>
             ))}
           </TabsList>
-          {documents.map((url) => (
-            <TabsContent key={url} value={url} className="mt-4">
+          {documents.map((document) => (
+            <TabsContent key={document.cid} value={document.cid} className="mt-4">
               <IpfsDocumentPanel
-                documentUrl={url}
+                documentUrl={document.cid}
                 invoiceId={invoiceId}
-                meta={allMeta.find((m) => m.documentUrl === url)}
+                document={document}
+                meta={allMeta.find((m) => m.documentUrl === document.cid)}
               />
             </TabsContent>
           ))}

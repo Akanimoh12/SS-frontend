@@ -39,6 +39,7 @@ import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
 import { InvoiceDiscussionThread } from "@/components/invoices/InvoiceDiscussionThread";
 import { ReturnsBreakdown } from "@/components/invoices/ReturnsBreakdown";
 import { SettlementTimeline } from "@/components/invoices/SettlementTimeline";
+import { RepaymentTimeline } from "@/components/invoices/RepaymentTimeline";
 import { ShareInvoiceButton } from "@/components/invoices/ShareInvoiceButton";
 import { WatchlistButton } from "@/components/invoices/WatchlistButton";
 import { useIsKycApproved } from "@/hooks/useKycStatus";
@@ -54,6 +55,7 @@ import { InvoiceClassificationBadges } from "@/components/marketplace/InvoiceCla
 import { InvoiceTagPills } from "@/components/marketplace/InvoiceTagPills";
 import { SettlementCountdown } from "@/components/marketplace/SettlementCountdown";
 import { AnnouncementFeed } from "@/components/invoices/AnnouncementFeed";
+import { FundingDepth } from "@/components/marketplace/FundingDepth";
 import { SyndicatePanel } from "@/components/invoices/SyndicatePanel";
 import { InvoiceFraudReport, InvoiceUnderReviewBanner } from "@/components/invoices/InvoiceFraudReport";
 import { InvoiceRiskAlert } from "@/components/invoices/InvoiceRiskAlert";
@@ -67,6 +69,8 @@ import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStat
 import { ImpactReport } from "@/components/invoices/ImpactReport";
 import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
 import { RateAuctionPanel } from "@/components/invoices/RateAuctionPanel";
+import { DebtorAckPanel, useDebtorAckBlocked } from "@/components/invoices/DebtorAckPanel";
+import { VelocityMeter } from "@/components/investor/VelocityMeter";
 import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
 import { RestructureProposalCard } from "@/components/invoices/RestructureProposalCard";
 
@@ -155,6 +159,7 @@ function InvestCallToAction({
   const { isApproved, isLoading, status } = useIsKycApproved({
     enabled: isConnected,
   });
+  const ackBlocked = useDebtorAckBlocked(invoiceId);
 
   let body: ReactNode;
 
@@ -187,13 +192,17 @@ function InvestCallToAction({
   } else {
     body = (
       <>
-        <InvestmentModal
-          invoiceId={invoiceId}
-          minInvestment={minInvestment}
-          maxInvestment={maxInvestment}
-          fundingCap={fundingCap}
-          trancheType={trancheStatus ? selectedTranche : undefined}
-        />
+        <VelocityMeter />
+        {ackBlocked ? null : (
+          <InvestmentModal
+            invoiceId={invoiceId}
+            minInvestment={minInvestment}
+            maxInvestment={maxInvestment}
+            fundingCap={fundingCap}
+            invoiceFaceValue={fundingCap}
+            trancheType={trancheStatus ? selectedTranche : undefined}
+          />
+        )}
         <ReturnsCalculator
           faceValue={fundingCap}
           yieldPercentage={yieldPercentage}
@@ -364,6 +373,10 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           lateInterest={lateInterest.accrued}
         />
       )}
+      {/* Repayment history timeline (#635): payment events with matching status. */}
+      {(invoice.status === "funded" || invoice.status === "settled") && (
+        <RepaymentTimeline invoiceId={invoice.id} />
+      )}
 
       <InvoiceBenchmarkCard invoiceId={invoice.id} />
 
@@ -469,12 +482,15 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
       )}
 
       <OrderBookDepthChart invoiceId={invoice.id} />
+      {invoice.status === "open" && <FundingDepth invoiceId={invoice.id} />}
 
       <DynamicYieldCard wallet={invoice.seller} invoiceRate={invoice.yield_percentage} />
 
       {/* Descending-rate auction, rendered only when the backend reports one (#594). */}
       <RateAuctionPanel invoiceId={invoice.id} />
 
+      {/* Debtor acknowledgement status (#620). */}
+      <DebtorAckPanel invoiceId={invoice.id} />
       {/* Invest CTA — KYC gated. */}
       {isOpenForInvestment ? (
         <InvestCallToAction
@@ -514,11 +530,11 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
 
       <AttestationList invoiceId={invoice.id} />
 
-      <InvoiceDocumentsTab
+      {(invoice.document_url || invoice.documents?.length) ? <InvoiceDocumentsTab
         invoiceId={invoice.id}
         documentUrl={invoice.document_url ?? null}
         additionalDocuments={invoice.documents ?? []}
-      />
+      /> : null}
 
       <InvoiceDiscussionThread
         invoiceId={invoice.id}

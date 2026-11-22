@@ -32,7 +32,7 @@ describe("InvoiceFraudReport", () => {
     expect(select).toHaveTextContent("Other");
     fireEvent.change(select, { target: { value: "forged_invoice" } });
     fireEvent.change(screen.getByTestId("report-description"), { target: { value: "proof" } });
-    fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
+    fireEvent.click(screen.getByTestId("submit-report"));
     await waitFor(() => expect(submit).toHaveBeenCalledWith("inv-1", expect.objectContaining({ reason: "forged_invoice", evidence_hash: expect.stringMatching(/^[a-f0-9]{64}$/), wallet: "GINVESTOR" })));
   });
 

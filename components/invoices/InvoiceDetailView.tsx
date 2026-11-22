@@ -38,6 +38,7 @@ import { OverdueBanner } from "@/components/invoices/OverdueBanner";
 import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
 import { ReturnsBreakdown } from "@/components/invoices/ReturnsBreakdown";
 import { SettlementTimeline } from "@/components/invoices/SettlementTimeline";
+import { RepaymentTimeline } from "@/components/invoices/RepaymentTimeline";
 import { ShareInvoiceButton } from "@/components/invoices/ShareInvoiceButton";
 import { WatchlistButton } from "@/components/invoices/WatchlistButton";
 import { useIsKycApproved } from "@/hooks/useKycStatus";
@@ -364,6 +365,10 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           isSettled={invoice.status === "settled"}
           lateInterest={lateInterest.accrued}
         />
+      )}
+      {/* Repayment history timeline (#635): payment events with matching status. */}
+      {(invoice.status === "funded" || invoice.status === "settled") && (
+        <RepaymentTimeline invoiceId={invoice.id} />
       )}
 
       <InvoiceBenchmarkCard invoiceId={invoice.id} />

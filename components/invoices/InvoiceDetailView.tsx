@@ -35,7 +35,9 @@ import { WatchWarning } from "@/components/debtor/WatchWarning";
 import { ReturnsCalculator } from "@/components/invoices/ReturnsCalculator";
 import { InvestmentModal } from "@/components/invoices/InvestmentModal";
 import { OverdueBanner } from "@/components/invoices/OverdueBanner";
+import { ExposureMeter } from "@/components/invoices/ExposureMeter";
 import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
+import { InvoiceDiscussionThread } from "@/components/invoices/InvoiceDiscussionThread";
 import { ReturnsBreakdown } from "@/components/invoices/ReturnsBreakdown";
 import { SettlementTimeline } from "@/components/invoices/SettlementTimeline";
 import { RepaymentTimeline } from "@/components/invoices/RepaymentTimeline";
@@ -143,6 +145,7 @@ function InvestCallToAction({
   maturityDate,
   fractionPrice,
   trancheStatus,
+  debtorId,
 }: {
   invoiceId: string;
   minInvestment: number;
@@ -152,6 +155,7 @@ function InvestCallToAction({
   maturityDate: string;
   fractionPrice?: number;
   trancheStatus?: NonNullable<import("@/lib/api").Invoice["tranche_status"]>;
+  debtorId?: string | null;
 }) {
   const [selectedTranche, setSelectedTranche] = useState<1 | 2>(1);
   const { isConnected } = useWallet();
@@ -200,6 +204,7 @@ function InvestCallToAction({
             fundingCap={fundingCap}
             invoiceFaceValue={fundingCap}
             trancheType={trancheStatus ? selectedTranche : undefined}
+            debtorId={debtorId}
           />
         )}
         <ReturnsCalculator
@@ -490,6 +495,7 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
 
       {/* Debtor acknowledgement status (#620). */}
       <DebtorAckPanel invoiceId={invoice.id} />
+      <ExposureMeter debtorId={invoice.debtor_id ?? invoice.debtor_hash} />
       {/* Invest CTA — KYC gated. */}
       {isOpenForInvestment ? (
         <InvestCallToAction
@@ -501,6 +507,7 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           maturityDate={invoice.maturity_date ?? invoice.due_date}
           fractionPrice={invoice.fraction_price}
           trancheStatus={invoice.tranche_status ?? undefined}
+          debtorId={invoice.debtor_id ?? invoice.debtor_hash}
         />
       ) : (
         <Card data-testid="invest-cta">
@@ -534,6 +541,12 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         documentUrl={invoice.document_url ?? null}
         additionalDocuments={invoice.documents ?? []}
       /> : null}
+
+      <InvoiceDiscussionThread
+        invoiceId={invoice.id}
+        issuerAddress={invoice.seller}
+        currentUserAddress={address}
+      />
 
       <InvoiceRatingWidget
         invoiceId={invoice.id}

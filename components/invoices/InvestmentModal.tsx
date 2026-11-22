@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { GuardedButton } from "@/components/network/GuardedButton";
 import { InvestmentAmountInput } from "@/components/invoices/InvestmentAmountInput";
 import { InvestCurrencySelector } from "@/components/invoices/InvestCurrencySelector";
-import { FeeTierDisplay } from "@/components/invoices/FeeTierDisplay";
+import { PromoFeeBreakdown } from "@/components/promotions/PromoFeeBreakdown";
+import { ExposureWarning } from "@/components/invoices/ExposureWarning";
 import { PriceImpactWarning } from "@/components/invoices/PriceImpactWarning";
 import { FeeBreakdown } from "@/components/fees/FeeBreakdown";
 import { TopUpCta } from "@/components/wallet/TopUpCta";
@@ -27,6 +28,7 @@ import { useAccreditationStatus } from "@/hooks/useAccreditationStatus";
 import { isAccreditationExpired } from "@/lib/accreditation";
 import { useAccreditation } from "@/context/AccreditationContext";
 import { formatUsdc, formatXLM } from "@/lib/format";
+import { useExposureLimit } from "@/hooks/useExposureLimit";
 import {
   BASE_CURRENCY,
   investErrorMessage,
@@ -51,6 +53,8 @@ interface InvestmentModalProps {
   onSuccess?: () => void;
   trancheType?: 1 | 2;
   currentPositions?: LeveragedPositionItem[];
+  /** Debtor identity for the exposure gate (#602). */
+  debtorId?: string | null;
 }
 
 export function InvestmentModal({
@@ -62,6 +66,7 @@ export function InvestmentModal({
   onSuccess,
   trancheType,
   currentPositions = [],
+  debtorId,
 }: InvestmentModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [validAmount, setValidAmount] = useState<number | null>(null);
@@ -119,6 +124,8 @@ export function InvestmentModal({
     Boolean(exposureEvaluation?.isHardBlocked) ||
     Boolean(exposureEvaluation?.requiresWarning && !softWarningDismissed);
 
+  const exposure = useExposureLimit(debtorId, validAmount, maxInvestment);
+
   // A null balance means the balance is still unknown, which is not the same as
   // being underfunded, so it must not block the investment.
   const isBaseCurrency = currency === BASE_CURRENCY;
@@ -143,7 +150,14 @@ export function InvestmentModal({
   const currencyErrorMessage = investErrorMessage(investMutation.error, currency);
 
   const handleInvest = async () => {
-    if (validAmount === null || amountError !== null || insufficientBalance || fxBlocked || feeBlocked) return;
+    if (
+      validAmount === null ||
+      amountError !== null ||
+      insufficientBalance ||
+      fxBlocked ||
+      feeBlocked ||
+      exposure.blocked
+    ) return;
 
     // Revalidate at submit time: a tab may have remained open past its
     // accreditation expiry while the form was already visible.
@@ -270,7 +284,9 @@ export function InvestmentModal({
               />
             )}
 
-            <FeeTierDisplay amount={validAmount} loyalty={loyalty.data} />
+            <ExposureWarning blocked={exposure.blocked} maximum={exposure.maximum} />
+
+            <PromoFeeBreakdown amount={validAmount} loyalty={loyalty.data} />
 
             {/* #450 — link to the full public fee schedule so the tier shown
                 above can be read in context (what it applies to, and the other
@@ -328,7 +344,8 @@ export function InvestmentModal({
                   insufficientBalance ||
                   fxBlocked ||
                   feeBlocked ||
-                  isExposureBlocked
+                  isExposureBlocked ||
+                  exposure.blocked
                 }
                 data-testid="investment-submit"
                 className="flex-1"

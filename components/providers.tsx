@@ -53,9 +53,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <I18nextProvider i18n={i18n}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <QueryClientProvider client={queryClient}>
+          {/* #379: one shared wallet session for the whole app */}
           <WalletProvider>
+            {/* #610: global wrong-network detection and transaction guard */}
             <NetworkMismatchProvider>
               <AuthProvider>
+                {/* #437: one shared display currency + live XLM/USD rate */}
                 <CurrencyProvider>
                   <AccreditationProvider>
                     <PreferencesProvider>

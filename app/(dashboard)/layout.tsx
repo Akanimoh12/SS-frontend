@@ -1,4 +1,5 @@
 import { CommandPalette } from "@/components/common/CommandPalette";
+import { SandboxBanner } from "@/components/common/SandboxBanner";
 
 export default function DashboardLayout({
   children,
@@ -8,6 +9,7 @@ export default function DashboardLayout({
   return (
     <>
       <CommandPalette />
+      <SandboxBanner />
       {children}
     </>
   );

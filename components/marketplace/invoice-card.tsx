@@ -13,6 +13,7 @@ import { useComparison } from "./InvoiceComparisonContext";
 import { ShareInvoiceButton } from "@/components/invoices/ShareInvoiceButton";
 import { StateChangeBadge } from "./StateChangeBadge";
 import { WatchlistButton } from "./WatchlistButton";
+import { GlossaryTerm } from "@/components/common/GlossaryTerm";
 import { BenchmarkChip } from "./BenchmarkChip";
 import { NavChip } from "./NavChip";
 import { Lock } from "lucide-react";
@@ -97,7 +98,7 @@ export function InvoiceCard({
         {invoice.yield_percentage !== undefined && (
           <div className="flex flex-col items-start gap-1" data-testid="invoice-card-yield">
             <span className="text-sm text-muted-foreground">
-              Yield{" "}
+              <GlossaryTerm term="Yield">Yield</GlossaryTerm>{" "}
               <span className="font-medium text-foreground">{invoice.yield_percentage}%</span>
             </span>
             <BenchmarkChip invoice={invoice} />

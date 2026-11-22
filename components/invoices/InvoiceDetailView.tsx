@@ -67,6 +67,8 @@ import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStat
 import { ImpactReport } from "@/components/invoices/ImpactReport";
 import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
 import { RateAuctionPanel } from "@/components/invoices/RateAuctionPanel";
+import { DebtorAckPanel, useDebtorAckBlocked } from "@/components/invoices/DebtorAckPanel";
+import { VelocityMeter } from "@/components/investor/VelocityMeter";
 import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
 import { OverdueBanner } from "@/components/invoices/OverdueBanner";
 import { useLateInterest } from "@/hooks/useLateInterest";
@@ -157,6 +159,7 @@ function InvestCallToAction({
   const { isApproved, isLoading, status } = useIsKycApproved({
     enabled: isConnected,
   });
+  const ackBlocked = useDebtorAckBlocked(invoiceId);
 
   let body: ReactNode;
 
@@ -189,13 +192,16 @@ function InvestCallToAction({
   } else {
     body = (
       <>
-        <InvestmentModal
-          invoiceId={invoiceId}
-          minInvestment={minInvestment}
-          maxInvestment={maxInvestment}
-          fundingCap={fundingCap}
-          trancheType={trancheStatus ? selectedTranche : undefined}
-        />
+        <VelocityMeter />
+        {ackBlocked ? null : (
+          <InvestmentModal
+            invoiceId={invoiceId}
+            minInvestment={minInvestment}
+            maxInvestment={maxInvestment}
+            fundingCap={fundingCap}
+            trancheType={trancheStatus ? selectedTranche : undefined}
+          />
+        )}
         <ReturnsCalculator
           faceValue={fundingCap}
           yieldPercentage={yieldPercentage}
@@ -481,6 +487,8 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
       {/* Descending-rate auction, rendered only when the backend reports one (#594). */}
       <RateAuctionPanel invoiceId={invoice.id} />
 
+      {/* Debtor acknowledgement status (#620). */}
+      <DebtorAckPanel invoiceId={invoice.id} />
       {/* Invest CTA — KYC gated. */}
       {isOpenForInvestment ? (
         <InvestCallToAction

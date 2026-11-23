@@ -9,6 +9,7 @@ import { InvoiceClassificationBadges } from "./InvoiceClassificationBadges";
 import { CompareToggleButton } from "./CompareToggleButton";
 import { SettlementCountdown } from "./SettlementCountdown";
 import { InvestorDemandMetrics } from "./InvestorDemandMetrics";
+import { NoteIndicator } from "./NoteIndicator";
 import { useComparison } from "./InvoiceComparisonContext";
 import { ShareInvoiceButton } from "@/components/invoices/ShareInvoiceButton";
 import { StateChangeBadge } from "./StateChangeBadge";
@@ -89,6 +90,7 @@ export function InvoiceCard({
             )}
             <OverdueChip status={invoice.status} dueDate={invoice.due_date} />
             <DebtorStatusBadge debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
+            <NoteIndicator invoiceId={invoice.id} />
             {showWatchToggle && <WatchlistButton invoiceId={invoice.id} />}
           </div>
         </div>

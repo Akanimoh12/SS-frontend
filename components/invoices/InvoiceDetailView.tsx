@@ -38,9 +38,12 @@ import { OverdueBanner } from "@/components/invoices/OverdueBanner";
 import { ExposureMeter } from "@/components/invoices/ExposureMeter";
 import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
 import { InvoiceDiscussionThread } from "@/components/invoices/InvoiceDiscussionThread";
+import { InvoiceNotes } from "@/components/invoices/InvoiceNotes";
 import { ReturnsBreakdown } from "@/components/invoices/ReturnsBreakdown";
 import { SettlementTimeline } from "@/components/invoices/SettlementTimeline";
 import { RepaymentTimeline } from "@/components/invoices/RepaymentTimeline";
+import { InstallmentSchedule } from "@/components/invoices/InstallmentSchedule";
+import { investorProportion } from "@/lib/installments";
 import { ShareInvoiceButton } from "@/components/invoices/ShareInvoiceButton";
 import { WatchlistButton } from "@/components/invoices/WatchlistButton";
 import { useIsKycApproved } from "@/hooks/useKycStatus";
@@ -379,6 +382,14 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           lateInterest={lateInterest.accrued}
         />
       )}
+      {/* Debtor payment plan (#776): schedule, statuses, shortfalls, investor share. */}
+      {(invoice.status === "funded" || invoice.status === "settled") && (
+        <InstallmentSchedule
+          invoiceId={invoice.id}
+          investorProportion={investorProportion(investorClaim, invoice.raised || invoice.amount)}
+          lateInterestAccrued={lateInterest.accrued}
+        />
+      )}
       {/* Repayment history timeline (#635): payment events with matching status. */}
       {(invoice.status === "funded" || invoice.status === "settled") && (
         <RepaymentTimeline invoiceId={invoice.id} />
@@ -560,7 +571,11 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         invoiceId={invoice.id}
         documentUrl={invoice.document_url ?? null}
         additionalDocuments={invoice.documents ?? []}
+        invoiceNumber={invoice.invoice_number}
       /> : null}
+
+      {/* Private to the investor (#777); never part of shared links. */}
+      {address && <InvoiceNotes invoiceId={invoice.id} />}
 
       <InvoiceDiscussionThread
         invoiceId={invoice.id}

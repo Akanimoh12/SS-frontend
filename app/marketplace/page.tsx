@@ -5,6 +5,10 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchInvoices, resolveInvoiceCategory, type Invoice, type InvoiceCategory } from "@/lib/api";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useNoteIndex } from "@/hooks/useNoteIndex";
+import { TagFilter } from "@/components/marketplace/TagFilter";
+import { NoteIndicator } from "@/components/marketplace/NoteIndicator";
+import { filterByTags } from "@/lib/invoiceNotes";
 import { TimelockPendingBanner } from "@/components/governance";
 import { PromoBanner } from "@/components/promotions/PromoBanner";
 import { FundingProgressBar } from "@/components/invoices";
@@ -117,6 +121,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
             </Badge>
             <OverdueChip status={invoice.status} dueDate={invoice.due_date} />
             <DebtorStatusBadge debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
+            <NoteIndicator invoiceId={invoice.id} />
             <WatchlistButton invoiceId={invoice.id} />
           </div>
         </div>
@@ -715,9 +720,12 @@ function MarketplacePageContent() {
    * only narrowing — but it is still what makes a checkbox respond
    * immediately, and what keeps the client honest while a page is mid-fetch.
    */
+  // Private tag filter (#777): the user's own tags, applied client-side.
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const { index: noteIndex } = useNoteIndex();
   const visibleInvoices = useMemo(
-    () => filterByTaxonomy(filtered, taxonomyFilters),
-    [filtered, taxonomyFilters]
+    () => filterByTags(filterByTaxonomy(filtered, taxonomyFilters), noteIndex, tagFilter),
+    [filtered, taxonomyFilters, noteIndex, tagFilter]
   );
 
   /**
@@ -905,6 +913,7 @@ function MarketplacePageContent() {
             </div>
 
             <div className="space-y-4">
+              <TagFilter selected={tagFilter} onChange={setTagFilter} />
               {visibleInvoices.length === 0 ? (
                 <div
                   className="space-y-4 py-12 text-center text-muted-foreground"

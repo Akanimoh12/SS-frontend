@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentVerificationBadge } from "@/components/invoices/DocumentVerificationBadge";
+import { DataRoom } from "@/components/invoices/DataRoom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoiceDocumentExpiryAlert } from "@/components/invoices/InvoiceDocumentExpiryAlert";
 import { DocumentRenewalModal } from "@/components/invoices/DocumentRenewalModal";
@@ -519,6 +520,8 @@ interface InvoiceDocumentsTabProps {
   additionalDocuments?: Array<string | SupportingDocument>;
   /** Optional expiry metadata for documents (#658). */
   documentsMetadata?: DocumentExpiryMetadata[];
+  /** Human-readable invoice number, used to name the bulk-download ZIP (#778). */
+  invoiceNumber?: string;
 }
 
 /**
@@ -530,6 +533,7 @@ export function InvoiceDocumentsTab({
   documentUrl,
   additionalDocuments = [],
   documentsMetadata = [],
+  invoiceNumber,
 }: InvoiceDocumentsTabProps) {
   const extras: SupportingDocument[] = additionalDocuments.map((item) => typeof item === "string" ? { cid: item } : item).filter((item) => Boolean(item.cid));
   const primary: SupportingDocument | null = documentUrl ? { cid: documentUrl } : null;
@@ -583,12 +587,25 @@ export function InvoiceDocumentsTab({
     </CardHeader>
   );
 
+  const dataRoom = (
+    <DataRoom
+      invoiceId={invoiceId}
+      invoiceNumber={invoiceNumber ?? invoiceId}
+      documents={documents.map((document) => ({
+        id: document.cid,
+        name: document.file_name || documentFileName(document.cid),
+        size: document.size,
+      }))}
+    />
+  );
+
   if (documents.length === 1 && primary) {
     return (
       <Card data-testid="invoice-documents">
         {sectionHeader}
         <CardContent className="space-y-4">
-          <InvoiceDocumentExpiryAlert documents={allMeta} />
+          {dataRoom}
+        <InvoiceDocumentExpiryAlert documents={allMeta} />
           <IpfsDocumentPanel
             documentUrl={primary.cid}
             invoiceId={invoiceId}
@@ -604,6 +621,7 @@ export function InvoiceDocumentsTab({
     <Card data-testid="invoice-documents">
       {sectionHeader}
       <CardContent className="space-y-4">
+        {dataRoom}
         <InvoiceDocumentExpiryAlert documents={allMeta} />
         <Tabs defaultValue={primary?.cid ?? documents[0].cid}>
           <TabsList>

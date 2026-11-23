@@ -5,6 +5,8 @@
  * from lib/api/index.ts cannot introduce a circular import.
  */
 
+import { assertProductionCredential } from "@/lib/sandbox/credentials";
+
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 export class ApiError extends Error {
@@ -33,6 +35,8 @@ export function isNotFound(error: unknown): boolean {
 }
 
 export function authHeaders(token?: string): Record<string, string> {
+  // Sandbox keys (ss_test_…) must never reach production (#696).
+  assertProductionCredential(token);
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

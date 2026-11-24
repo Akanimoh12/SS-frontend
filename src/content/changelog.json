@@ -1,0 +1,38 @@
+[
+  {
+    "id": "2026-11-20-credit-line",
+    "date": "2026-11-20",
+    "title": "Issuer credit lines",
+    "summary": "Issuers can now view their credit line, draw funds and repay from a dedicated dashboard.",
+    "tag": "New",
+    "link": "/issuer/credit-line"
+  },
+  {
+    "id": "2026-11-18-late-interest",
+    "date": "2026-11-18",
+    "title": "Late interest visibility",
+    "summary": "Overdue invoices now show days overdue and accrued late interest across detail and list views.",
+    "tag": "Improved"
+  },
+  {
+    "id": "2026-11-05-network",
+    "date": "2026-11-05",
+    "title": "Wrong-network detection",
+    "summary": "A banner now warns when your wallet is on the wrong network and guides you to switch.",
+    "tag": "New"
+  },
+  {
+    "id": "2026-10-28-settlement-totals",
+    "date": "2026-10-28",
+    "title": "Settlement totals",
+    "summary": "Fixed a rounding issue in the partial settlement timeline totals.",
+    "tag": "Fixed"
+  },
+  {
+    "id": "2026-10-10-portfolio",
+    "date": "2026-10-10",
+    "title": "Portfolio refresh",
+    "summary": "Refreshed the investor portfolio with clearer share and payout information.",
+    "tag": "Improved"
+  }
+]
